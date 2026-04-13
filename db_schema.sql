@@ -1,0 +1,56 @@
+CREATE DATABASE IF NOT EXISTS university;
+USE university;
+
+CREATE TABLE Users (
+    user_id INT PRIMARY KEY,
+    first_name VARCHAR(255) NOT NULL,
+    last_name VARCHAR(255) NOT NULL,
+    email VARCHAR(255) UNIQUE NOT NULL,
+    username VARCHAR(255) UNIQUE NOT NULL,
+    password VARCHAR(255) NOT NULL,
+    user_type ENUM('student', 'lecturer', 'sysadmin') NOT NULL,
+    INDEX idx_user_type (user_type),
+    INDEX idx_name (last_name, first_name)
+);
+
+CREATE TABLE Students (
+    student_id INT PRIMARY KEY,
+    user_id INT UNIQUE NOT NULL,
+    FOREIGN KEY (user_id) REFERENCES Users(user_id) ON DELETE CASCADE,
+    INDEX idx_user_id (user_id)
+);
+
+CREATE TABLE Lecturers (
+    lecturer_id INT PRIMARY KEY,
+    user_id INT UNIQUE NOT NULL,
+    FOREIGN KEY (user_id) REFERENCES Users(user_id) ON DELETE CASCADE,
+    INDEX idx_user_id (user_id)
+);
+
+CREATE TABLE SysAdmins (
+    admin_id INT PRIMARY KEY,
+    user_id INT UNIQUE NOT NULL,
+    FOREIGN KEY (user_id) REFERENCES Users(user_id) ON DELETE CASCADE,
+    INDEX idx_user_id (user_id)
+);
+
+CREATE TABLE Courses (
+    course_code VARCHAR(10) PRIMARY KEY,
+    title VARCHAR(255) NOT NULL,
+    assigned_lecturer INT NOT NULL,
+    FOREIGN KEY (assigned_lecturer) REFERENCES Lecturers(lecturer_id) ON DELETE CASCADE,
+    INDEX idx_title (title),
+    INDEX idx_assigned_lecturer (assigned_lecturer)
+);
+
+CREATE TABLE Enrollments (
+    enroll_id INT PRIMARY KEY,
+    student_id INT NOT NULL,
+    course_code VARCHAR(10) NOT NULL,
+    final_grade DECIMAL(5,2),
+    FOREIGN KEY (student_id) REFERENCES Students(student_id) ON DELETE CASCADE,
+    FOREIGN KEY (course_code) REFERENCES Courses(course_code) ON DELETE CASCADE,
+    INDEX idx_student_id (student_id),
+    INDEX idx_course_code (course_code),
+    INDEX idx_grade (final_grade)
+);
