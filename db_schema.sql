@@ -101,7 +101,7 @@ CREATE TABLE Submissions (
     student_id INT NOT NULL,
     file_url TEXT,
     submitted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    UNIQUE (assignment_id, student_id), -- 🚨 prevents duplicate submissions
+    UNIQUE (assignment_id, student_id), 
     FOREIGN KEY (assignment_id) REFERENCES Assignments(assignment_id) ON DELETE CASCADE,
     FOREIGN KEY (student_id) REFERENCES Students(student_id) ON DELETE CASCADE
 );
