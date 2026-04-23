@@ -54,3 +54,64 @@ CREATE TABLE Enrollments (
     INDEX idx_course_code (course_code),
     INDEX idx_grade (final_grade)
 );
+
+
+
+
+
+
+
+
+CREATE TABLE Course_Sections (
+    section_id INT AUTO_INCREMENT PRIMARY KEY,
+    course_code VARCHAR(10) NOT NULL,
+    title VARCHAR(255) NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (course_code) REFERENCES Courses(course_code) ON DELETE CASCADE,
+    INDEX idx_course_code (course_code)
+);
+
+CREATE TABLE Course_Content (
+    content_id INT AUTO_INCREMENT PRIMARY KEY,
+    section_id INT NOT NULL,
+    title VARCHAR(255),
+    content_type ENUM('link', 'file', 'slide') NOT NULL,
+    content_url TEXT,
+    uploaded_by INT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (section_id) REFERENCES Course_Sections(section_id) ON DELETE CASCADE,
+    FOREIGN KEY (uploaded_by) REFERENCES Lecturers(lecturer_id) ON DELETE CASCADE,
+    INDEX idx_section_id (section_id)
+);
+
+CREATE TABLE Assignments (
+    assignment_id INT AUTO_INCREMENT PRIMARY KEY,
+    course_code VARCHAR(10) NOT NULL,
+    title VARCHAR(255) NOT NULL,
+    description TEXT,
+    due_date DATE,
+    created_by INT NOT NULL,
+    FOREIGN KEY (course_code) REFERENCES Courses(course_code) ON DELETE CASCADE,
+    FOREIGN KEY (created_by) REFERENCES Lecturers(lecturer_id) ON DELETE CASCADE
+);
+
+CREATE TABLE Submissions (
+    submission_id INT AUTO_INCREMENT PRIMARY KEY,
+    assignment_id INT NOT NULL,
+    student_id INT NOT NULL,
+    file_url TEXT,
+    submitted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE (assignment_id, student_id), -- 🚨 prevents duplicate submissions
+    FOREIGN KEY (assignment_id) REFERENCES Assignments(assignment_id) ON DELETE CASCADE,
+    FOREIGN KEY (student_id) REFERENCES Students(student_id) ON DELETE CASCADE
+);
+
+CREATE TABLE Grades (
+    grade_id INT AUTO_INCREMENT PRIMARY KEY,
+    submission_id INT NOT NULL,
+    grade DECIMAL(5,2),
+    graded_by INT NOT NULL,
+    graded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (submission_id) REFERENCES Submissions(submission_id) ON DELETE CASCADE,
+    FOREIGN KEY (graded_by) REFERENCES Lecturers(lecturer_id)
+);
