@@ -8,7 +8,7 @@ def get_db_connection():
     return mysql.connector.connect(
         host="localhost",
         user="root",
-        password="$e@Rch876",
+        password="----",
         database="university",
         auth_plugin='mysql_native_password'
     )
@@ -327,9 +327,6 @@ def register_for_course(course_code):
         conn.close()
 
 
-
-
-
 @app.route('/courses/<course_code>/sections', methods=['POST'])
 def add_section(course_code):
     data = request.get_json()
@@ -346,7 +343,6 @@ def add_section(course_code):
     cursor = conn.cursor(dictionary=True)
 
     try:
-
         course_check = "SELECT course_code FROM Courses WHERE course_code = %s"
         cursor.execute(course_check, (course_code,))
         course = cursor.fetchone()
@@ -364,7 +360,7 @@ def add_section(course_code):
         return jsonify({"message": "Section added successfully"}), 201
 
     except mysql.connector.Error as err:
-        conn.rollback()  
+        conn.rollback()
         return jsonify({"error": str(err)}), 500
 
     finally:
@@ -373,7 +369,6 @@ def add_section(course_code):
 
 
 # For Lecturer Only
-
 @app.route('/sections/<int:section_id>/content', methods=['POST'])
 def add_content(section_id):
     data = request.get_json()
@@ -508,6 +503,7 @@ def create_assignment(course_code):
         cursor.close()
         conn.close()
 
+
 @app.route('/assignments/<int:assignment_id>/submit', methods=['POST'])
 def submit_assignment(assignment_id):
     data = request.get_json()
@@ -627,7 +623,6 @@ def grade_submission(submission_id):
 
         avg = cursor.fetchone()["avg_grade"]
 
-        # Update Enrollments table with final calculated average
         cursor.execute("""
             UPDATE Enrollments
             SET final_grade = %s
@@ -645,6 +640,288 @@ def grade_submission(submission_id):
     finally:
         cursor.close()
         conn.close()
+
+
+# =========================================================
+# RETRIEVE MEMBERS OF A COURSE
+# =========================================================
+@app.route('/courses/<course_code>/members', methods=['GET'])
+def get_course_members(course_code):
+    conn = get_db_connection()
+    cursor = conn.cursor(dictionary=True)
+
+    try:
+        cursor.execute("""
+            SELECT u.user_id, u.first_name, u.last_name, u.user_type
+            FROM Courses c
+            JOIN Lecturers l ON c.assigned_lecturer = l.lecturer_id
+            JOIN Users u ON l.user_id = u.user_id
+            WHERE c.course_code = %s
+        """, (course_code,))
+        lecturer = cursor.fetchone()
+
+        cursor.execute("""
+            SELECT u.user_id, u.first_name, u.last_name, u.user_type
+            FROM Enrollments e
+            JOIN Users u ON e.student_id = u.user_id
+            WHERE e.course_code = %s
+        """, (course_code,))
+        students = cursor.fetchall()
+
+        return jsonify({
+            "course_code": course_code,
+            "lecturer": lecturer,
+            "students": students
+        }), 200
+
+    except mysql.connector.Error as err:
+        return jsonify({"error": str(err)}), 500
+
+    finally:
+        cursor.close()
+        conn.close()
+
+
+# =========================================================
+# CREATE CALENDAR EVENT
+# =========================================================
+@app.route('/courses/<course_code>/calendar-events', methods=['POST'])
+def create_calendar_event(course_code):
+    data = request.get_json()
+
+    title = data.get('title')
+    description = data.get('description')
+    event_date = data.get('event_date')
+    start_time = data.get('start_time')
+    end_time = data.get('end_time')
+    created_by = data.get('created_by')
+
+    if not all([title, event_date, created_by]):
+        return jsonify({"error": "title, event_date and created_by are required"}), 400
+
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    try:
+        cursor.execute("""
+            INSERT INTO Calendar_Events 
+            (course_code, title, description, event_date, start_time, end_time, created_by)
+            VALUES (%s, %s, %s, %s, %s, %s, %s)
+        """, (course_code, title, description, event_date, start_time, end_time, created_by))
+
+        conn.commit()
+        return jsonify({"message": "Calendar event created"}), 201
+
+    except mysql.connector.Error as err:
+        conn.rollback()
+        return jsonify({"error": str(err)}), 500
+
+    finally:
+        cursor.close()
+        conn.close()
+
+@app.route('/courses/<course_code>/calendar-events', methods=['GET'])
+def get_course_calendar_events(course_code):
+    conn = get_db_connection()
+    cursor = conn.cursor(dictionary=True)
+
+    try:
+        cursor.execute("""
+            SELECT * FROM Calendar_Events
+            WHERE course_code = %s
+            ORDER BY event_date, start_time
+        """, (course_code,))
+
+        return jsonify(cursor.fetchall()), 200
+
+    except mysql.connector.Error as err:
+        return jsonify({"error": str(err)}), 500
+
+    finally:
+        cursor.close()
+        conn.close()
+
+
+@app.route('/students/<int:student_id>/calendar-events', methods=['GET'])
+def get_student_events(student_id):
+    date = request.args.get('date')
+
+    if not date:
+        return jsonify({"error": "date is required"}), 400
+
+    conn = get_db_connection()
+    cursor = conn.cursor(dictionary=True)
+
+    try:
+        cursor.execute("""
+            SELECT ce.*
+            FROM Enrollments e
+            JOIN Calendar_Events ce ON e.course_code = ce.course_code
+            WHERE e.student_id = %s AND ce.event_date = %s
+        """, (student_id, date))
+
+        return jsonify(cursor.fetchall()), 200
+
+    except mysql.connector.Error as err:
+        return jsonify({"error": str(err)}), 500
+
+    finally:
+        cursor.close()
+        conn.close()
+
+
+@app.route('/courses/<course_code>/forums', methods=['POST'])
+def create_forum(course_code):
+    data = request.get_json()
+
+    title = data.get('title')
+    description = data.get('description')
+    created_by = data.get('created_by')
+
+    if not title or not created_by:
+        return jsonify({"error": "title and created_by required"}), 400
+
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    try:
+        cursor.execute("""
+            INSERT INTO Forums (course_code, title, description, created_by)
+            VALUES (%s, %s, %s, %s)
+        """, (course_code, title, description, created_by))
+
+        conn.commit()
+        return jsonify({"message": "Forum created"}), 201
+
+    except mysql.connector.Error as err:
+        conn.rollback()
+        return jsonify({"error": str(err)}), 500
+
+    finally:
+        cursor.close()
+        conn.close()
+
+@app.route('/courses/<course_code>/forums', methods=['GET'])
+def get_forums(course_code):
+    conn = get_db_connection()
+    cursor = conn.cursor(dictionary=True)
+
+    try:
+        cursor.execute("""
+            SELECT * FROM Forums WHERE course_code = %s
+        """, (course_code,))
+        return jsonify(cursor.fetchall()), 200
+
+    except mysql.connector.Error as err:
+        return jsonify({"error": str(err)}), 500
+
+    finally:
+        cursor.close()
+        conn.close()
+
+
+@app.route('/forums/<int:forum_id>/threads', methods=['POST'])
+def create_thread(forum_id):
+    data = request.get_json()
+
+    user_id = data.get('user_id')
+    title = data.get('title')
+    content = data.get('content')
+
+    if not all([user_id, title, content]):
+        return jsonify({"error": "Missing fields"}), 400
+
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    try:
+        cursor.execute("""
+            INSERT INTO Discussion_Threads (forum_id, user_id, title, content)
+            VALUES (%s, %s, %s, %s)
+        """, (forum_id, user_id, title, content))
+
+        conn.commit()
+        return jsonify({"message": "Thread created"}), 201
+
+    except mysql.connector.Error as err:
+        conn.rollback()
+        return jsonify({"error": str(err)}), 500
+
+    finally:
+        cursor.close()
+        conn.close()
+
+
+# =========================================================
+@app.route('/forums/<int:forum_id>/threads', methods=['GET'])
+def get_threads(forum_id):
+    conn = get_db_connection()
+    cursor = conn.cursor(dictionary=True)
+
+    try:
+        cursor.execute("""
+            SELECT * FROM Discussion_Threads WHERE forum_id = %s
+        """, (forum_id,))
+        return jsonify(cursor.fetchall()), 200
+
+    except mysql.connector.Error as err:
+        return jsonify({"error": str(err)}), 500
+
+    finally:
+        cursor.close()
+        conn.close()
+
+
+@app.route('/threads/<int:thread_id>/replies', methods=['POST'])
+def add_reply(thread_id):
+    data = request.get_json()
+
+    user_id = data.get('user_id')
+    content = data.get('content')
+    parent_reply_id = data.get('parent_reply_id')
+
+    if not user_id or not content:
+        return jsonify({"error": "Missing fields"}), 400
+
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    try:
+        cursor.execute("""
+            INSERT INTO Thread_Replies (thread_id, user_id, content, parent_reply_id)
+            VALUES (%s, %s, %s, %s)
+        """, (thread_id, user_id, content, parent_reply_id))
+
+        conn.commit()
+        return jsonify({"message": "Reply added"}), 201
+
+    except mysql.connector.Error as err:
+        conn.rollback()
+        return jsonify({"error": str(err)}), 500
+
+    finally:
+        cursor.close()
+        conn.close()
+
+
+@app.route('/threads/<int:thread_id>/replies', methods=['GET'])
+def get_replies(thread_id):
+    conn = get_db_connection()
+    cursor = conn.cursor(dictionary=True)
+
+    try:
+        cursor.execute("""
+            SELECT * FROM Thread_Replies WHERE thread_id = %s
+        """, (thread_id,))
+        return jsonify(cursor.fetchall()), 200
+
+    except mysql.connector.Error as err:
+        return jsonify({"error": str(err)}), 500
+
+    finally:
+        cursor.close()
+        conn.close()
+
 
 if __name__ == '__main__':
     app.run(debug=True)

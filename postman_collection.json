@@ -595,3 +595,291 @@
     }
   ]
 }
+
+{
+  "info": {
+    "name": "COMP3161 API",
+    "_postman_id": "c0b6a6f1-1234-5678-9101-abcdef123456",
+    "description": "Full API Testing Collection",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+
+    {
+      "name": "Register Student",
+      "request": {
+        "method": "POST",
+        "header": [
+          {"key": "Content-Type", "value": "application/json"}
+        ],
+        "url": {
+          "raw": "http://127.0.0.1:5000/register",
+          "protocol": "http",
+          "host": ["127", "0", "0", "1"],
+          "port": "5000",
+          "path": ["register"]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"user_id\": 1,\n  \"first_name\": \"John\",\n  \"last_name\": \"Doe\",\n  \"email\": \"john@example.com\",\n  \"username\": \"john123\",\n  \"password\": \"1234\",\n  \"user_type\": \"student\"\n}"
+        }
+      }
+    },
+
+    {
+      "name": "Register Lecturer",
+      "request": {
+        "method": "POST",
+        "header": [
+          {"key": "Content-Type", "value": "application/json"}
+        ],
+        "url": {
+          "raw": "http://127.0.0.1:5000/register",
+          "protocol": "http",
+          "host": ["127", "0", "0", "1"],
+          "port": "5000",
+          "path": ["register"]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"user_id\": 2,\n  \"first_name\": \"Dr\",\n  \"last_name\": \"Smith\",\n  \"email\": \"smith@example.com\",\n  \"username\": \"smith\",\n  \"password\": \"1234\",\n  \"user_type\": \"lecturer\"\n}"
+        }
+      }
+    },
+
+    {
+      "name": "Register Admin",
+      "request": {
+        "method": "POST",
+        "header": [
+          {"key": "Content-Type", "value": "application/json"}
+        ],
+        "url": {
+          "raw": "http://127.0.0.1:5000/register",
+          "protocol": "http",
+          "host": ["127", "0", "0", "1"],
+          "port": "5000",
+          "path": ["register"]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"user_id\": 3,\n  \"first_name\": \"Admin\",\n  \"last_name\": \"User\",\n  \"email\": \"admin@example.com\",\n  \"username\": \"admin\",\n  \"password\": \"1234\",\n  \"user_type\": \"sysadmin\"\n}"
+        }
+      }
+    },
+
+    {
+      "name": "Create Course",
+      "request": {
+        "method": "POST",
+        "header": [
+          {"key": "Content-Type", "value": "application/json"}
+        ],
+        "url": {
+          "raw": "http://127.0.0.1:5000/courses",
+          "protocol": "http",
+          "host": ["127", "0", "0", "1"],
+          "port": "5000",
+          "path": ["courses"]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"created_by\": 3,\n  \"course_code\": \"COMP3161\",\n  \"title\": \"Database Systems\",\n  \"assigned_lecturer\": 2\n}"
+        }
+      }
+    },
+
+    {
+      "name": "Register Student for Course",
+      "request": {
+        "method": "POST",
+        "header": [
+          {"key": "Content-Type", "value": "application/json"}
+        ],
+        "url": {
+          "raw": "http://127.0.0.1:5000/courses/COMP3161/register",
+          "protocol": "http",
+          "host": ["127", "0", "0", "1"],
+          "port": "5000",
+          "path": ["courses", "COMP3161", "register"]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"student_id\": 1\n}"
+        }
+      }
+    },
+
+    {
+      "name": "Get Course Members",
+      "request": {
+        "method": "GET",
+        "url": {
+          "raw": "http://127.0.0.1:5000/courses/COMP3161/members",
+          "protocol": "http",
+          "host": ["127", "0", "0", "1"],
+          "port": "5000",
+          "path": ["courses", "COMP3161", "members"]
+        }
+      }
+    },
+
+    {
+      "name": "Create Calendar Event",
+      "request": {
+        "method": "POST",
+        "header": [
+          {"key": "Content-Type", "value": "application/json"}
+        ],
+        "url": {
+          "raw": "http://127.0.0.1:5000/courses/COMP3161/calendar-events",
+          "protocol": "http",
+          "host": ["127", "0", "0", "1"],
+          "port": "5000",
+          "path": ["courses", "COMP3161", "calendar-events"]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"title\": \"Midterm Review\",\n  \"description\": \"Study session\",\n  \"event_date\": \"2026-04-25\",\n  \"start_time\": \"10:00:00\",\n  \"end_time\": \"12:00:00\",\n  \"created_by\": 2\n}"
+        }
+      }
+    },
+
+    {
+      "name": "Get Course Events",
+      "request": {
+        "method": "GET",
+        "url": {
+          "raw": "http://127.0.0.1:5000/courses/COMP3161/calendar-events",
+          "protocol": "http",
+          "host": ["127", "0", "0", "1"],
+          "port": "5000",
+          "path": ["courses", "COMP3161", "calendar-events"]
+        }
+      }
+    },
+
+    {
+      "name": "Get Student Events",
+      "request": {
+        "method": "GET",
+        "url": {
+          "raw": "http://127.0.0.1:5000/students/1/calendar-events?date=2026-04-25",
+          "protocol": "http",
+          "host": ["127", "0", "0", "1"],
+          "port": "5000",
+          "path": ["students", "1", "calendar-events"],
+          "query": [
+            {"key": "date", "value": "2026-04-25"}
+          ]
+        }
+      }
+    },
+
+    {
+      "name": "Create Forum",
+      "request": {
+        "method": "POST",
+        "header": [
+          {"key": "Content-Type", "value": "application/json"}
+        ],
+        "url": {
+          "raw": "http://127.0.0.1:5000/courses/COMP3161/forums",
+          "protocol": "http",
+          "host": ["127", "0", "0", "1"],
+          "port": "5000",
+          "path": ["courses", "COMP3161", "forums"]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"title\": \"Exam Discussion\",\n  \"description\": \"Talk about exam\",\n  \"created_by\": 2\n}"
+        }
+      }
+    },
+
+    {
+      "name": "Get Forums",
+      "request": {
+        "method": "GET",
+        "url": {
+          "raw": "http://127.0.0.1:5000/courses/COMP3161/forums",
+          "protocol": "http",
+          "host": ["127", "0", "0", "1"],
+          "port": "5000",
+          "path": ["courses", "COMP3161", "forums"]
+        }
+      }
+    },
+
+    {
+      "name": "Create Thread",
+      "request": {
+        "method": "POST",
+        "header": [
+          {"key": "Content-Type", "value": "application/json"}
+        ],
+        "url": {
+          "raw": "http://127.0.0.1:5000/forums/1/threads",
+          "protocol": "http",
+          "host": ["127", "0", "0", "1"],
+          "port": "5000",
+          "path": ["forums", "1", "threads"]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"user_id\": 1,\n  \"title\": \"Need help\",\n  \"content\": \"Explain normalization\"\n}"
+        }
+      }
+    },
+
+    {
+      "name": "Get Threads",
+      "request": {
+        "method": "GET",
+        "url": {
+          "raw": "http://127.0.0.1:5000/forums/1/threads",
+          "protocol": "http",
+          "host": ["127", "0", "0", "1"],
+          "port": "5000",
+          "path": ["forums", "1", "threads"]
+        }
+      }
+    },
+
+    {
+      "name": "Add Reply",
+      "request": {
+        "method": "POST",
+        "header": [
+          {"key": "Content-Type", "value": "application/json"}
+        ],
+        "url": {
+          "raw": "http://127.0.0.1:5000/threads/1/replies",
+          "protocol": "http",
+          "host": ["127", "0", "0", "1"],
+          "port": "5000",
+          "path": ["threads", "1", "replies"]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"user_id\": 2,\n  \"content\": \"Sure I’ll help\",\n  \"parent_reply_id\": null\n}"
+        }
+      }
+    },
+
+    {
+      "name": "Get Replies",
+      "request": {
+        "method": "GET",
+        "url": {
+          "raw": "http://127.0.0.1:5000/threads/1/replies",
+          "protocol": "http",
+          "host": ["127", "0", "0", "1"],
+          "port": "5000",
+          "path": ["threads", "1", "replies"]
+        }
+      }
+    }
+
+  ]
+}

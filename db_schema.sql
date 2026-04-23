@@ -55,13 +55,6 @@ CREATE TABLE Enrollments (
     INDEX idx_grade (final_grade)
 );
 
-
-
-
-
-
-
-
 CREATE TABLE Course_Sections (
     section_id INT AUTO_INCREMENT PRIMARY KEY,
     course_code VARCHAR(10) NOT NULL,
@@ -114,4 +107,62 @@ CREATE TABLE Grades (
     graded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (submission_id) REFERENCES Submissions(submission_id) ON DELETE CASCADE,
     FOREIGN KEY (graded_by) REFERENCES Lecturers(lecturer_id)
+);
+
+CREATE TABLE Calendar_Events (
+    event_id INT AUTO_INCREMENT PRIMARY KEY,
+    course_code VARCHAR(10) NOT NULL,
+    title VARCHAR(255) NOT NULL,
+    description TEXT,
+    event_date DATE NOT NULL,
+    start_time TIME,
+    end_time TIME,
+    created_by INT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (course_code) REFERENCES Courses(course_code) ON DELETE CASCADE,
+    FOREIGN KEY (created_by) REFERENCES Users(user_id) ON DELETE CASCADE,
+    INDEX idx_course_code (course_code),
+    INDEX idx_event_date (event_date),
+    INDEX idx_created_by (created_by)
+);
+
+CREATE TABLE Forums (
+    forum_id INT AUTO_INCREMENT PRIMARY KEY,
+    course_code VARCHAR(10) NOT NULL,
+    title VARCHAR(255) NOT NULL,
+    description TEXT,
+    created_by INT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (course_code) REFERENCES Courses(course_code) ON DELETE CASCADE,
+    FOREIGN KEY (created_by) REFERENCES Users(user_id) ON DELETE CASCADE,
+    INDEX idx_course_code (course_code),
+    INDEX idx_created_by (created_by)
+);
+
+CREATE TABLE Discussion_Threads (
+    thread_id INT AUTO_INCREMENT PRIMARY KEY,
+    forum_id INT NOT NULL,
+    user_id INT NOT NULL,
+    title VARCHAR(255) NOT NULL,
+    content TEXT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (forum_id) REFERENCES Forums(forum_id) ON DELETE CASCADE,
+    FOREIGN KEY (user_id) REFERENCES Users(user_id) ON DELETE CASCADE,
+    INDEX idx_forum_id (forum_id),
+    INDEX idx_user_id (user_id)
+);
+
+CREATE TABLE Thread_Replies (
+    reply_id INT AUTO_INCREMENT PRIMARY KEY,
+    thread_id INT NOT NULL,
+    user_id INT NOT NULL,
+    content TEXT NOT NULL,
+    parent_reply_id INT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (thread_id) REFERENCES Discussion_Threads(thread_id) ON DELETE CASCADE,
+    FOREIGN KEY (user_id) REFERENCES Users(user_id) ON DELETE CASCADE,
+    FOREIGN KEY (parent_reply_id) REFERENCES Thread_Replies(reply_id) ON DELETE CASCADE,
+    INDEX idx_thread_id (thread_id),
+    INDEX idx_user_id (user_id),
+    INDEX idx_parent_reply_id (parent_reply_id)
 );
