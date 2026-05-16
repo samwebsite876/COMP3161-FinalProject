@@ -8,7 +8,7 @@ def get_db_connection():
     return mysql.connector.connect(
         host="localhost",
         user="root",
-        password="",
+        password="Jamaica.876",
         database="university",
         auth_plugin='mysql_native_password'
     )
@@ -938,6 +938,85 @@ def get_replies(thread_id):
         cursor.close()
         conn.close()
 
+@app.route('/views/courses-50-plus', methods=['GET'])
+def get_courses_50_plus():
+    conn = get_db_connection()
+    cursor = conn.cursor(dictionary=True)
+
+    try:
+        cursor.execute("SELECT * FROM courses_50_plus")
+        return jsonify(cursor.fetchall()), 200
+
+    except mysql.connector.Error as err:
+        return jsonify({"error": str(err)}), 500
+
+    finally:
+        cursor.close()
+        conn.close()
+
+@app.route('/views/students-5-courses', methods=['GET'])
+def get_students_5_courses():
+    conn = get_db_connection()
+    cursor = conn.cursor(dictionary=True)
+
+    try:
+        cursor.execute("SELECT * FROM students_5_courses")
+        return jsonify(cursor.fetchall()), 200
+
+    except mysql.connector.Error as err:
+        return jsonify({"error": str(err)}), 500
+
+    finally:
+        cursor.close()
+        conn.close()
+
+@app.route('/views/lecturers-3-courses', methods=['GET'])
+def get_lecturers_3_courses():
+    conn = get_db_connection()
+    cursor = conn.cursor(dictionary=True)
+
+    try:
+        cursor.execute("SELECT * FROM lecturers_3_courses")
+        return jsonify(cursor.fetchall()), 200
+
+    except mysql.connector.Error as err:
+        return jsonify({"error": str(err)}), 500
+
+    finally:
+        cursor.close()
+        conn.close()
+
+@app.route('/views/top-10-courses', methods=['GET'])
+def get_top_10_courses():
+    conn = get_db_connection()
+    cursor = conn.cursor(dictionary=True)
+
+    try:
+        cursor.execute("SELECT * FROM top_10_courses")
+        return jsonify(cursor.fetchall()), 200
+
+    except mysql.connector.Error as err:
+        return jsonify({"error": str(err)}), 500
+
+    finally:
+        cursor.close()
+        conn.close()
+
+@app.route('/views/top-10-students', methods=['GET'])
+def get_top_10_students():
+    conn = get_db_connection()
+    cursor = conn.cursor(dictionary=True)
+
+    try:
+        cursor.execute("SELECT * FROM top_10_students")
+        return jsonify(cursor.fetchall()), 200
+
+    except mysql.connector.Error as err:
+        return jsonify({"error": str(err)}), 500
+
+    finally:
+        cursor.close()
+        conn.close()
 
 if __name__ == '__main__':
     app.run(debug=True)
