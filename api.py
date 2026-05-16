@@ -8,7 +8,7 @@ def get_db_connection():
     return mysql.connector.connect(
         host="localhost",
         user="root",
-        password="Jamaica.876",
+        password="",
         database="university",
         auth_plugin='mysql_native_password'
     )
