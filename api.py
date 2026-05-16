@@ -8,7 +8,7 @@ def get_db_connection():
     return mysql.connector.connect(
         host="localhost",
         user="root",
-        password="----",
+        password="",
         database="university",
         auth_plugin='mysql_native_password'
     )
@@ -732,7 +732,15 @@ def get_course_calendar_events(course_code):
             ORDER BY event_date, start_time
         """, (course_code,))
 
-        return jsonify(cursor.fetchall()), 200
+        events = cursor.fetchall()
+
+        for event in events:
+            event["event_date"] = str(event["event_date"])
+            event["start_time"] = str(event["start_time"]) if event["start_time"] else None
+            event["end_time"] = str(event["end_time"]) if event["end_time"] else None
+            event["created_at"] = str(event["created_at"]) if event["created_at"] else None
+
+        return jsonify(events), 200
 
     except mysql.connector.Error as err:
         return jsonify({"error": str(err)}), 500
@@ -760,7 +768,15 @@ def get_student_events(student_id):
             WHERE e.student_id = %s AND ce.event_date = %s
         """, (student_id, date))
 
-        return jsonify(cursor.fetchall()), 200
+        events = cursor.fetchall()
+
+        for event in events:
+            event["event_date"] = str(event["event_date"])
+            event["start_time"] = str(event["start_time"]) if event["start_time"] else None
+            event["end_time"] = str(event["end_time"]) if event["end_time"] else None
+            event["created_at"] = str(event["created_at"]) if event["created_at"] else None
+
+        return jsonify(events), 200
 
     except mysql.connector.Error as err:
         return jsonify({"error": str(err)}), 500
