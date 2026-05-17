@@ -10,7 +10,7 @@ def get_db_connection():
     return mysql.connector.connect(
         host="localhost",
         user="root",
-        password="",
+        password="Neiko6622",
         database="university",
         auth_plugin='mysql_native_password'
     )
@@ -358,9 +358,12 @@ def add_section(course_code):
         """
         cursor.execute(insert_query, (course_code, title))
         conn.commit()
+        section_id = cursor.lastrowid
 
-        return jsonify({"message": "Section added successfully"}), 201
-
+        return jsonify({
+    "message": "Section created",
+    "section_id": section_id
+}), 201
     except mysql.connector.Error as err:
         conn.rollback()
         return jsonify({"error": str(err)}), 500
