@@ -548,12 +548,7 @@ td {
   .brand h2 {
     font-size: 20px;
   }
-} 
-
-
-
-
-
+}
 
 .loginPage {
   min-height: 100vh;
@@ -561,7 +556,11 @@ td {
   place-items: center;
   padding: 24px;
   background:
-    radial-gradient(circle at 20% 20%, rgba(11, 102, 195, 0.18), transparent 32%),
+    radial-gradient(
+      circle at 20% 20%,
+      rgba(11, 102, 195, 0.18),
+      transparent 32%
+    ),
     linear-gradient(135deg, #f3f6fa, #eaf3ff);
 }
 
@@ -621,13 +620,7 @@ td {
 
 .logoutBtn:hover {
   background: rgba(255, 255, 255, 0.16);
-} 
-
-
-
-
-
-
+}
 
 .contentList {
   display: grid;
@@ -673,21 +666,6 @@ td {
   font-size: 13px;
   font-weight: 900;
   text-transform: capitalize;
-}
-
-
-
-.forumLayout {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 18px;
-  align-items: start;
-}
-
-.forumResults {
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 18px;
 }
 
 .subForm {
@@ -784,29 +762,6 @@ td {
   transform: translateY(-1px);
 }
 
-@media (max-width: 1180px) {
-  .forumLayout {
-    grid-template-columns: 1fr;
-  }
-
-  .discussionCard {
-    flex-direction: column;
-  }
-} 
-
-
-
-
-
-
-
-
-.forumStepper {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 14px;
-}
-
 .step {
   display: flex;
   align-items: center;
@@ -847,18 +802,6 @@ td {
 .activeStep span {
   background: var(--blue);
   color: white;
-}
-
-.forumActionGrid {
-  display: grid;
-  grid-template-columns: 0.95fr 1.05fr 1fr;
-  gap: 18px;
-  align-items: start;
-}
-
-.forumResultsClean {
-  display: grid;
-  gap: 18px;
 }
 
 .subForm {
@@ -917,6 +860,7 @@ td {
   background: #eef7ff;
 }
 
+
 .discussionCard h3 {
   margin: 8px 0 6px;
   color: var(--navy);
@@ -959,22 +903,6 @@ td {
   background: var(--blue-dark);
   transform: translateY(-1px);
 }
-
-@media (max-width: 1180px) {
-  .forumStepper,
-  .forumActionGrid {
-    grid-template-columns: 1fr;
-  }
-
-  .discussionCard {
-    flex-direction: column;
-  }
-} 
-
-
-
-
-
 
 
 .assignmentLayout {
@@ -1078,10 +1006,7 @@ td {
   .assignmentHeader {
     flex-direction: column;
   }
-} 
-
-
-
+}
 
 .studentAssignmentCard {
   grid-column: 1 / -1;
@@ -1110,6 +1035,1088 @@ td {
   }
 
   .studentAssignmentCard .submitWideBtn {
+    width: 100%;
+  }
+}
+.jsonBlock {
+  background: #071b30;
+  color: #eaf3ff;
+  border-radius: 16px;
+  padding: 16px;
+  overflow: auto;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  min-height: 80px;
+}
+select.textInput {
+  appearance: auto;
+}
+
+/* =========================================================
+   FINAL FIXES REQUESTED
+   - Dashboard cards now only show role and ID.
+   - JSON/report blocks are vertical and wrap instead of forcing horizontal scrolling.
+   - Reports use Next/Previous pagination without removing data.
+   ========================================================= */
+
+.compactStats {
+  grid-template-columns: repeat(2, minmax(220px, 1fr));
+  max-width: 720px;
+}
+
+.jsonBlock {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: hidden;
+  overflow-y: auto;
+  white-space: pre-wrap;
+  word-break: break-word;
+  overflow-wrap: anywhere;
+  background: #061d36;
+  color: #f7fbff;
+  border-radius: 14px;
+  padding: 18px;
+  line-height: 1.55;
+  font-size: 14px;
+  font-family: Consolas, Monaco, "Courier New", monospace;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.reportViewer {
+  display: grid;
+  gap: 14px;
+}
+
+.reportHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.reportHeader h3 {
+  margin: 0 0 4px;
+  color: var(--navy);
+}
+
+.reportHeader p {
+  margin: 0;
+  color: var(--muted);
+  font-weight: 750;
+}
+
+.pagerControls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.pagerControls span {
+  font-weight: 850;
+  color: var(--navy);
+}
+
+.miniBtn.light {
+  background: #eaf3ff;
+  color: var(--navy);
+}
+
+.miniBtn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.fieldLabel span {
+  display: block;
+  font-weight: 850;
+  color: var(--navy);
+  margin: 12px 0 8px;
+}
+
+@media (max-width: 850px) {
+  .compactStats {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* =========================================================
+   READABILITY FIXES
+   These stop report / JSON blocks from stretching sideways.
+   ========================================================= */
+.compactStats {
+  grid-template-columns: repeat(2, minmax(180px, 260px));
+}
+
+.jsonBlock {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: hidden;
+  overflow-y: auto;
+  white-space: pre-wrap;
+  word-break: break-word;
+  overflow-wrap: anywhere;
+  background: #061d36;
+  color: #ffffff;
+  border-radius: 16px;
+  padding: 18px;
+  line-height: 1.55;
+}
+
+.reportViewer {
+  display: grid;
+  gap: 14px;
+  width: 100%;
+  max-width: 100%;
+}
+
+.reportHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
+.pagerControls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.miniBtn.light {
+  background: #eaf3ff;
+  color: var(--navy);
+}
+
+.miniBtn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  transform: none;
+}
+
+@media (max-width: 720px) {
+  .compactStats {
+    grid-template-columns: 1fr;
+  }
+
+  .reportHeader {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}
+
+/* =========================================================
+   CARD RESULT DISPLAY
+   Replaces raw JSON blocks across Student, Lecturer, and Admin.
+   Every API result now appears as readable cards.
+   ========================================================= */
+.recordGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 14px;
+  width: 100%;
+  max-width: 100%;
+}
+
+.resultCard {
+  background: #ffffff;
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  padding: 18px;
+  box-shadow: var(--shadow);
+  max-width: 100%;
+  overflow-wrap: anywhere;
+}
+
+.resultCard h3 {
+  margin: 0 0 14px;
+  color: var(--navy);
+  font-size: 20px;
+}
+
+.recordFields {
+  display: grid;
+  gap: 10px;
+}
+
+.recordField {
+  display: grid;
+  gap: 4px;
+  padding: 10px 12px;
+  background: #f8fbff;
+  border: 1px solid #e5edf5;
+  border-radius: 12px;
+}
+
+.recordField span {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.recordField strong {
+  color: var(--text);
+  font-size: 15px;
+  line-height: 1.45;
+  word-break: break-word;
+}
+
+.nestedRecord {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid #e5edf5;
+  border-radius: 14px;
+  background: #fbfdff;
+}
+
+.nestedRecord > strong {
+  color: var(--navy);
+  font-size: 14px;
+}
+
+.reportViewer .recordGrid {
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+}
+
+/* Hide any old code-block styling if an old component remains somewhere. */
+.jsonBlock {
+  display: none;
+}
+
+.cardHeader {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 18px;
+}
+
+.stepBadge {
+  width: 32px;
+  height: 32px;
+  border-radius: 999px;
+  background: #f9b233;
+  color: #001f3f;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 800;
+}
+
+.buttonRow {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+/* =========================================================
+   FINAL FORUM LAYOUT
+========================================================= */
+
+.betterForumLayout {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 28px;
+  width: 100%;
+}
+
+.betterForumLayout .actionCard {
+  width: 100%;
+  max-width: none;
+  padding: 30px;
+}
+
+.sectionHeader {
+  display: flex;
+  justify-content: center;
+  text-align: center;
+}
+
+.sectionHeader > div {
+  width: 100%;
+  max-width: 900px;
+}
+
+.sectionHeader h2 {
+  margin-bottom: 10px;
+}
+
+.sectionHeader p {
+  font-size: 15px;
+}
+
+/* FORM GRID */
+
+.forumFormGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 18px;
+  margin-top: 20px;
+}
+
+.forumFormGrid .fullWidth {
+  grid-column: 1 / -1;
+}
+
+/* BUTTONS */
+
+.forumButtonRow {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 14px;
+  margin-top: 24px;
+}
+
+.forumButtonRow button {
+  min-width: 190px;
+}
+
+/* RESULTS */
+
+.embeddedResults {
+  width: 100%;
+  margin-top: 28px;
+  padding-top: 22px;
+  border-top: 1px solid #dbe7f5;
+}
+
+.embeddedResults h3 {
+  margin-bottom: 16px;
+  color: var(--navy);
+  font-size: 22px;
+}
+
+.embeddedResults .recordGrid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 16px;
+  width: 100%;
+}
+
+.embeddedResults .resultCard {
+  width: 100%;
+  background: #f8fbff;
+  border: 1px solid #d9e7f5;
+}
+
+/* MOBILE */
+
+@media (max-width: 900px) {
+  .forumFormGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .forumButtonRow {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .forumButtonRow button {
+    width: 100%;
+  }
+}
+
+/* =========================================================
+   CLEAN CALENDAR LAYOUT
+========================================================= */
+
+.calendarSingleCard {
+  width: 100%;
+}
+
+.calendarSingleCard .actionCard {
+  width: 100%;
+  padding: 30px;
+  text-align: left;
+  align-items: stretch;
+}
+
+.calendarSingleCard h2 {
+  text-align: left;
+}
+
+.calendarSingleCard p {
+  max-width: 720px;
+}
+
+.calendarFormGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(260px, 1fr));
+  gap: 18px;
+  margin-top: 22px;
+  width: 100%;
+}
+
+.calendarFormGrid .fullWidth {
+  grid-column: 1 / -1;
+}
+
+.calendarTimeRow {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 18px;
+  grid-column: 1 / -1;
+}
+
+.calendarButtonRow {
+  display: flex;
+  justify-content: center;
+  gap: 14px;
+  margin-top: 26px;
+}
+
+.calendarButtonRow button {
+  min-width: 190px;
+}
+
+.studentCalendarControls {
+  display: grid;
+  grid-template-columns: minmax(260px, 420px) auto auto;
+  gap: 14px;
+  align-items: end;
+  margin-top: 22px;
+}
+
+.studentDateField {
+  width: 100%;
+}
+
+.calendarSingleCard .embeddedResults {
+  width: 100%;
+  margin-top: 30px;
+  padding-top: 24px;
+  border-top: 1px solid #dbe7f5;
+}
+
+.calendarSingleCard .embeddedResults h3 {
+  text-align: left;
+  margin-bottom: 16px;
+}
+
+.calendarSingleCard .embeddedResults .recordGrid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 16px;
+}
+
+.calendarSingleCard .embeddedResults .resultCard {
+  width: 100%;
+  background: #f8fbff;
+  border: 1px solid #d9e7f5;
+}
+
+.calendarFormGrid .textInput,
+.studentCalendarControls .textInput {
+  margin-bottom: 0;
+}
+
+.calendarFormGrid label,
+.studentCalendarControls label {
+  margin: 0 0 8px;
+}
+
+@media (max-width: 900px) {
+  .calendarFormGrid,
+  .calendarTimeRow,
+  .studentCalendarControls {
+    grid-template-columns: 1fr;
+  }
+
+  .calendarButtonRow {
+    flex-direction: column;
+  }
+
+  .calendarButtonRow button {
+    width: 100%;
+  }
+}
+
+/* =========================================================
+   VERTICAL COURSE CONTENT LAYOUT
+   - Add Section appears first
+   - Add Content and Load Content are together
+   - Results stretch across the page underneath
+========================================================= */
+
+.contentSingleCard {
+  width: 100%;
+}
+
+.contentSingleCard .actionCard {
+  width: 100%;
+  padding: 30px;
+}
+
+.contentVerticalLayout {
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+  margin-top: 24px;
+  width: 100%;
+}
+
+.contentWideCard {
+  background: #f8fbff;
+  border: 1px solid #d9e7f5;
+  border-radius: 18px;
+  padding: 24px;
+  width: 100%;
+  max-width: 850px;
+}
+
+.contentWideCard h3 {
+  margin: 0 0 14px;
+  color: var(--navy);
+}
+
+.contentWideCard p {
+  margin-top: 0;
+}
+
+.contentWideCard .textInput {
+  margin-bottom: 12px;
+}
+
+.contentWideCard label {
+  margin: 10px 0 8px;
+}
+
+.contentWideCard > .primaryBtn,
+.contentWideCard > .secondaryBtn {
+  width: 100%;
+  margin-top: 10px;
+}
+
+.contentButtonRow {
+  display: flex;
+  justify-content: center;
+  gap: 14px;
+  margin-top: 18px;
+}
+
+.contentButtonRow button {
+  min-width: 220px;
+}
+
+.contentSingleCard .embeddedResults {
+  width: 100%;
+  margin-top: 30px;
+  padding-top: 24px;
+  border-top: 1px solid #dbe7f5;
+}
+
+.contentSingleCard .embeddedResults .recordGrid {
+  grid-template-columns: 1fr;
+}
+
+.contentSingleCard .embeddedResults .resultCard {
+  width: 100%;
+  background: #f8fbff;
+  border: 1px solid #d9e7f5;
+}
+
+@media (max-width: 900px) {
+  .contentWideCard {
+    max-width: 100%;
+  }
+
+  .contentButtonRow {
+    flex-direction: column;
+  }
+
+  .contentButtonRow button {
+    width: 100%;
+  }
+}
+
+/* =========================================================
+   VERTICAL ASSIGNMENT LAYOUT
+========================================================= */
+
+.assignmentSingleCard {
+  width: 100%;
+}
+
+.assignmentSingleCard .actionCard {
+  width: 100%;
+  padding: 30px;
+}
+
+.assignmentVerticalLayout {
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+  margin-top: 24px;
+  width: 100%;
+}
+
+.assignmentWideCard {
+  background: #f8fbff;
+  border: 1px solid #d9e7f5;
+  border-radius: 18px;
+  padding: 24px;
+  width: 100%;
+  max-width: 850px;
+}
+
+.assignmentWideCard h3 {
+  margin: 0 0 14px;
+  color: var(--navy);
+}
+
+.assignmentWideCard .textInput {
+  margin-bottom: 12px;
+}
+
+.assignmentWideCard label {
+  margin: 10px 0 8px;
+}
+
+.assignmentWideCard button {
+  width: 100%;
+  margin-top: 12px;
+}
+
+/* =========================================================
+   ADMIN REGISTRATION & MEMBERS LAYOUT
+========================================================= */
+
+.adminMembersSingleCard {
+  width: 100%;
+}
+
+.adminMembersSingleCard .actionCard {
+  width: 100%;
+  padding: 30px;
+}
+
+.adminMembersLayout {
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+  margin-top: 24px;
+  width: 100%;
+}
+
+.adminMembersCard {
+  background: #f8fbff;
+  border: 1px solid #d9e7f5;
+  border-radius: 18px;
+  padding: 24px;
+  width: 100%;
+  max-width: 850px;
+}
+
+.adminMembersCard h3 {
+  margin: 0 0 14px;
+  color: var(--navy);
+}
+
+.adminMembersCard .textInput {
+  margin-bottom: 12px;
+}
+
+.adminMembersCard label {
+  margin: 10px 0 8px;
+}
+
+.adminMembersCard button {
+  width: 100%;
+  margin-top: 12px;
+}
+
+.adminMembersSingleCard .embeddedResults {
+  width: 100%;
+  margin-top: 30px;
+  padding-top: 24px;
+  border-top: 1px solid #dbe7f5;
+}
+
+.adminMembersSingleCard .embeddedResults h4 {
+  margin: 18px 0 12px;
+  color: var(--navy);
+}
+
+/* =========================================================
+   ADMIN REGISTRATION & MEMBERS LAYOUT
+========================================================= */
+
+.adminMembersSingleCard {
+  width: 100%;
+}
+
+.adminMembersSingleCard .actionCard {
+  width: 100%;
+  padding: 30px;
+}
+
+.adminMembersLayout {
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+  margin-top: 24px;
+  width: 100%;
+}
+
+.adminMembersCard {
+  background: #f8fbff;
+  border: 1px solid #d9e7f5;
+  border-radius: 18px;
+  padding: 24px;
+  width: 100%;
+  max-width: 850px;
+}
+
+.adminMembersCard h3 {
+  margin: 0 0 14px;
+  color: var(--navy);
+}
+
+.adminMembersCard .textInput {
+  margin-bottom: 12px;
+}
+
+.adminMembersCard label {
+  margin: 10px 0 8px;
+}
+
+.adminMembersCard button {
+  width: 100%;
+  margin-top: 12px;
+}
+
+.adminMembersSingleCard .embeddedResults {
+  width: 100%;
+  margin-top: 30px;
+  padding-top: 24px;
+  border-top: 1px solid #dbe7f5;
+}
+
+.adminMembersSingleCard .embeddedResults h4 {
+  margin: 18px 0 12px;
+  color: var(--navy);
+}
+
+/* =========================================================
+   ADMIN COURSES LAYOUT
+========================================================= */
+
+.adminCoursesSingleCard {
+  width: 100%;
+}
+
+.adminCoursesSingleCard .actionCard {
+  width: 100%;
+  padding: 30px;
+}
+
+.adminCoursesLayout {
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+  margin-top: 24px;
+  width: 100%;
+}
+
+.adminCoursesCard {
+  background: #f8fbff;
+  border: 1px solid #d9e7f5;
+  border-radius: 18px;
+  padding: 24px;
+  width: 100%;
+  max-width: 850px;
+}
+
+.adminCoursesCard h3 {
+  margin: 0 0 14px;
+  color: var(--navy);
+}
+
+.adminCoursesCard .textInput {
+  margin-bottom: 12px;
+}
+
+.adminCoursesCard label {
+  margin: 10px 0 8px;
+}
+
+.adminCoursesCard button {
+  width: 100%;
+  margin-top: 12px;
+}
+
+.adminCoursesSingleCard .embeddedResults {
+  width: 100%;
+  margin-top: 30px;
+  padding-top: 24px;
+  border-top: 1px solid #dbe7f5;
+}
+
+/* =========================================================
+   FINAL UI POLISH - CLEANER FRONTEND FLOW
+   Added after the older styles so it safely overrides them.
+========================================================= */
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background:
+    radial-gradient(circle at top right, rgba(11, 102, 195, 0.08), transparent 30%),
+    var(--bg);
+}
+
+.main {
+  max-width: 1180px;
+  padding: 28px 34px 48px;
+}
+
+.topbar {
+  border-radius: 26px;
+  padding: 24px 28px;
+  position: relative;
+  overflow: hidden;
+}
+
+.topbar::before {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 6px;
+  background: linear-gradient(180deg, var(--gold), var(--blue));
+}
+
+.userBadge {
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  text-align: center;
+}
+
+.sidebar {
+  overflow-y: auto;
+}
+
+.navItem,
+.logoutBtn,
+.primaryBtn,
+.secondaryBtn,
+.miniBtn {
+  letter-spacing: -0.01em;
+}
+
+.page {
+  gap: 20px;
+}
+
+.panel,
+.sectionHeader,
+.courseCard,
+.resultCard,
+.statCard {
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.panel:hover,
+.courseCard:hover,
+.resultCard:hover,
+.statCard:hover {
+  box-shadow: 0 18px 42px rgba(16, 24, 40, 0.11);
+}
+
+.sectionIntro {
+  margin-bottom: 4px;
+}
+
+.sectionIntro h2,
+.sectionIntro h3 {
+  margin-top: 0;
+}
+
+.fieldLabel span {
+  font-size: 14px;
+}
+
+.textInput {
+  min-height: 48px;
+}
+
+.centerButtonRow {
+  display: flex;
+  justify-content: center;
+  gap: 14px;
+  margin-top: 18px;
+}
+
+.centerButtonRow button {
+  min-width: 220px;
+}
+
+.lookupSingleCard {
+  width: 100%;
+  padding: 30px;
+}
+
+.lookupRow {
+  display: grid;
+  grid-template-columns: minmax(260px, 520px) auto;
+  gap: 16px;
+  align-items: end;
+  margin-top: 18px;
+}
+
+.lookupRow .fieldLabel {
+  margin: 0;
+}
+
+.lookupRow .primaryBtn,
+.lookupRow .secondaryBtn {
+  min-width: 210px;
+  margin-bottom: 12px;
+}
+
+.userFormPanel {
+  padding: 30px;
+}
+
+.userFormGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(240px, 1fr));
+  gap: 8px 18px;
+  margin-top: 18px;
+  max-width: 900px;
+}
+
+.userFormGrid .fullWidth {
+  grid-column: 1 / -1;
+}
+
+.adminCoursesLayout,
+.adminMembersLayout,
+.contentVerticalLayout,
+.assignmentVerticalLayout {
+  max-width: 920px;
+}
+
+.adminCoursesCard,
+.adminMembersCard,
+.contentWideCard,
+.assignmentWideCard {
+  max-width: none;
+}
+
+.adminCoursesCard,
+.adminMembersCard,
+.contentWideCard,
+.assignmentWideCard {
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.8);
+}
+
+.contentButtonRow,
+.calendarButtonRow,
+.forumButtonRow {
+  flex-wrap: wrap;
+}
+
+.assignmentSingleCard .actionCard,
+.calendarSingleCard .actionCard,
+.contentSingleCard .actionCard,
+.adminCoursesSingleCard .actionCard,
+.adminMembersSingleCard .actionCard {
+  padding: 30px;
+}
+
+.studentSubmitGrid {
+  max-width: 760px;
+}
+
+.embeddedResults {
+  background: rgba(248, 251, 255, 0.68);
+  border-radius: 18px;
+  padding: 22px;
+  border: 1px solid #e1ebf5;
+}
+
+.embeddedResults h3 {
+  margin-top: 0;
+}
+
+.recordGrid,
+.courseGrid {
+  margin-top: 10px;
+}
+
+.courseGrid {
+  grid-template-columns: repeat(auto-fit, minmax(245px, 1fr));
+}
+
+.courseCard,
+.resultCard {
+  border-color: #cfdeee;
+}
+
+.emptyState {
+  text-align: center;
+  padding: 22px;
+}
+
+.reportButton,
+.quickGrid button {
+  min-height: 54px;
+}
+
+.reportViewer .recordGrid {
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+}
+
+@media (max-width: 1050px) {
+  .main {
+    padding: 22px;
+  }
+
+  .lookupRow,
+  .userFormGrid,
+  .calendarFormGrid,
+  .studentCalendarControls,
+  .assignmentFormGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .lookupRow .primaryBtn,
+  .lookupRow .secondaryBtn {
+    width: 100%;
+    margin-bottom: 0;
+  }
+}
+
+@media (max-width: 850px) {
+  .topbar {
+    align-items: stretch;
+  }
+
+  .userBadge {
+    align-self: stretch;
+  }
+
+  .centerButtonRow,
+  .contentButtonRow,
+  .calendarButtonRow,
+  .forumButtonRow {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .centerButtonRow button,
+  .contentButtonRow button,
+  .calendarButtonRow button,
+  .forumButtonRow button {
     width: 100%;
   }
 }

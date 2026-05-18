@@ -10,10 +10,51 @@ def get_db_connection():
     return mysql.connector.connect(
         host="localhost",
         user="root",
-        password="Neiko6622",
+        password="Jamaica.876",
         database="university",
         auth_plugin='mysql_native_password'
     )
+
+
+def is_student_enrolled(cursor, student_id, course_code):
+    cursor.execute("""
+        SELECT enroll_id
+        FROM Enrollments
+        WHERE student_id = %s AND course_code = %s
+    """, (student_id, course_code))
+    return cursor.fetchone() is not None
+
+
+def is_lecturer_assigned(cursor, lecturer_id, course_code):
+    cursor.execute("""
+        SELECT course_code
+        FROM Courses
+        WHERE course_code = %s AND assigned_lecturer = %s
+    """, (course_code, lecturer_id))
+    return cursor.fetchone() is not None
+
+
+def can_user_access_course(cursor, user_id, course_code):
+    cursor.execute("""
+        SELECT user_id, user_type
+        FROM Users
+        WHERE user_id = %s
+    """, (user_id,))
+    user = cursor.fetchone()
+
+    if not user:
+        return False
+
+    if user["user_type"] == "sysadmin":
+        return True
+
+    if user["user_type"] == "student":
+        return is_student_enrolled(cursor, user_id, course_code)
+
+    if user["user_type"] == "lecturer":
+        return is_lecturer_assigned(cursor, user_id, course_code)
+
+    return False
 
 
 @app.route('/register', methods=['POST'])
@@ -337,20 +378,33 @@ def add_section(course_code):
         return jsonify({"error": "ERROR! A Request body is required"}), 400
 
     title = data.get('title')
+    created_by = data.get('created_by')
 
     if not title or title.strip() == "":
         return jsonify({"error": "ERROR! A Section title is required"}), 400
+
+    if not created_by:
+        return jsonify({"error": "ERROR! created_by is required"}), 400
 
     conn = get_db_connection()
     cursor = conn.cursor(dictionary=True)
 
     try:
-        course_check = "SELECT course_code FROM Courses WHERE course_code = %s"
+        course_check = """
+            SELECT course_code, assigned_lecturer
+            FROM Courses
+            WHERE course_code = %s
+        """
         cursor.execute(course_check, (course_code,))
         course = cursor.fetchone()
 
         if not course:
             return jsonify({"error": "Unable to find course"}), 404
+
+        if course["assigned_lecturer"] != created_by:
+            return jsonify({
+                "error": "ERROR! This lecturer is not assigned to this course"
+            }), 403
 
         insert_query = """
             INSERT INTO Course_Sections (course_code, title)
@@ -361,9 +415,10 @@ def add_section(course_code):
         section_id = cursor.lastrowid
 
         return jsonify({
-    "message": "Section created",
-    "section_id": section_id
-}), 201
+            "message": "Section created",
+            "section_id": section_id
+        }), 201
+
     except mysql.connector.Error as err:
         conn.rollback()
         return jsonify({"error": str(err)}), 500
@@ -434,6 +489,11 @@ def add_content(section_id):
 
 @app.route('/courses/<course_code>/content', methods=['GET'])
 def get_course_content(course_code):
+    user_id = request.args.get('user_id', type=int)
+
+    if not user_id:
+        return jsonify({"error": "user_id is required"}), 400
+
     conn = get_db_connection()
     cursor = conn.cursor(dictionary=True)
 
@@ -444,11 +504,15 @@ def get_course_content(course_code):
         if not course:
             return jsonify({"error": "Course not found"}), 404
 
+        if not can_user_access_course(cursor, user_id, course_code):
+            return jsonify({"error": "ERROR! You do not have access to this course"}), 403
+
         query = """
-            SELECT cs.title AS section, cc.title, cc.content_type, cc.content_url
+            SELECT cs.section_id, cs.title AS section, cc.title, cc.content_type, cc.content_url
             FROM Course_Sections cs
             LEFT JOIN Course_Content cc ON cs.section_id = cc.section_id
             WHERE cs.course_code = %s
+            ORDER BY cs.section_id
         """
         cursor.execute(query, (course_code,))
         results = cursor.fetchall()
@@ -589,10 +653,15 @@ def grade_submission(submission_id):
     cursor = conn.cursor(dictionary=True)
 
     try:
-        cursor.execute("SELECT submission_id FROM Submissions WHERE submission_id = %s", (submission_id,))
-        submission = cursor.fetchone()
+        cursor.execute("""
+            SELECT s.submission_id, s.student_id, a.course_code
+            FROM Submissions s
+            JOIN Assignments a ON s.assignment_id = a.assignment_id
+            WHERE s.submission_id = %s
+        """, (submission_id,))
+        info = cursor.fetchone()
 
-        if not submission:
+        if not info:
             return jsonify({"error": "Submission not found"}), 404
 
         cursor.execute("SELECT lecturer_id FROM Lecturers WHERE lecturer_id = %s", (graded_by,))
@@ -601,19 +670,14 @@ def grade_submission(submission_id):
         if not lecturer:
             return jsonify({"error": "Sorry! Only lecturers can grade"}), 403
 
+        if not is_lecturer_assigned(cursor, graded_by, info["course_code"]):
+            return jsonify({"error": "ERROR! This lecturer is not assigned to this course"}), 403
+
         query = """
             INSERT INTO Grades (submission_id, grade, graded_by)
             VALUES (%s, %s, %s)
         """
         cursor.execute(query, (submission_id, grade, graded_by))
-
-        cursor.execute("""
-            SELECT s.student_id, a.course_code
-            FROM Submissions s
-            JOIN Assignments a ON s.assignment_id = a.assignment_id
-            WHERE s.submission_id = %s
-        """, (submission_id,))
-        info = cursor.fetchone()
 
         student_id = info["student_id"]
         course_code = info["course_code"]
@@ -705,9 +769,12 @@ def create_calendar_event(course_code):
         return jsonify({"error": "title, event_date and created_by are required"}), 400
 
     conn = get_db_connection()
-    cursor = conn.cursor()
+    cursor = conn.cursor(dictionary=True)
 
     try:
+        if not is_lecturer_assigned(cursor, created_by, course_code):
+            return jsonify({"error": "ERROR! This lecturer is not assigned to this course"}), 403
+
         cursor.execute("""
             INSERT INTO Calendar_Events 
             (course_code, title, description, event_date, start_time, end_time, created_by)
@@ -727,10 +794,18 @@ def create_calendar_event(course_code):
 
 @app.route('/courses/<course_code>/calendar-events', methods=['GET'])
 def get_course_calendar_events(course_code):
+    user_id = request.args.get('user_id', type=int)
+
+    if not user_id:
+        return jsonify({"error": "user_id is required"}), 400
+
     conn = get_db_connection()
     cursor = conn.cursor(dictionary=True)
 
     try:
+        if not can_user_access_course(cursor, user_id, course_code):
+            return jsonify({"error": "ERROR! You do not have access to this course"}), 403
+
         cursor.execute("""
             SELECT * FROM Calendar_Events
             WHERE course_code = %s
@@ -759,19 +834,26 @@ def get_course_calendar_events(course_code):
 def get_student_events(student_id):
     date = request.args.get('date')
 
-    if not date:
-        return jsonify({"error": "date is required"}), 400
-
     conn = get_db_connection()
     cursor = conn.cursor(dictionary=True)
 
     try:
-        cursor.execute("""
-            SELECT ce.*
-            FROM Enrollments e
-            JOIN Calendar_Events ce ON e.course_code = ce.course_code
-            WHERE e.student_id = %s AND ce.event_date = %s
-        """, (student_id, date))
+        if date:
+            cursor.execute("""
+                SELECT ce.*
+                FROM Enrollments e
+                JOIN Calendar_Events ce ON e.course_code = ce.course_code
+                WHERE e.student_id = %s AND ce.event_date = %s
+                ORDER BY ce.event_date, ce.start_time
+            """, (student_id, date))
+        else:
+            cursor.execute("""
+                SELECT ce.*
+                FROM Enrollments e
+                JOIN Calendar_Events ce ON e.course_code = ce.course_code
+                WHERE e.student_id = %s
+                ORDER BY ce.event_date, ce.start_time
+            """, (student_id,))
 
         events = cursor.fetchall()
 
@@ -803,9 +885,12 @@ def create_forum(course_code):
         return jsonify({"error": "title and created_by required"}), 400
 
     conn = get_db_connection()
-    cursor = conn.cursor()
+    cursor = conn.cursor(dictionary=True)
 
     try:
+        if not is_lecturer_assigned(cursor, created_by, course_code):
+            return jsonify({"error": "ERROR! This lecturer is not assigned to this course"}), 403
+
         cursor.execute("""
             INSERT INTO Forums (course_code, title, description, created_by)
             VALUES (%s, %s, %s, %s)
@@ -824,10 +909,18 @@ def create_forum(course_code):
 
 @app.route('/courses/<course_code>/forums', methods=['GET'])
 def get_forums(course_code):
+    user_id = request.args.get('user_id', type=int)
+
+    if not user_id:
+        return jsonify({"error": "user_id is required"}), 400
+
     conn = get_db_connection()
     cursor = conn.cursor(dictionary=True)
 
     try:
+        if not can_user_access_course(cursor, user_id, course_code):
+            return jsonify({"error": "ERROR! You do not have access to this course"}), 403
+
         cursor.execute("""
             SELECT * FROM Forums WHERE course_code = %s
         """, (course_code,))
@@ -876,10 +969,24 @@ def create_thread(forum_id):
 # =========================================================
 @app.route('/forums/<int:forum_id>/threads', methods=['GET'])
 def get_threads(forum_id):
+    user_id = request.args.get('user_id', type=int)
+
+    if not user_id:
+        return jsonify({"error": "user_id is required"}), 400
+
     conn = get_db_connection()
     cursor = conn.cursor(dictionary=True)
 
     try:
+        cursor.execute("SELECT course_code FROM Forums WHERE forum_id = %s", (forum_id,))
+        forum = cursor.fetchone()
+
+        if not forum:
+            return jsonify({"error": "Forum not found"}), 404
+
+        if not can_user_access_course(cursor, user_id, forum["course_code"]):
+            return jsonify({"error": "ERROR! You do not have access to this forum"}), 403
+
         cursor.execute("""
             SELECT * FROM Discussion_Threads WHERE forum_id = %s
         """, (forum_id,))
@@ -927,10 +1034,29 @@ def add_reply(thread_id):
 
 @app.route('/threads/<int:thread_id>/replies', methods=['GET'])
 def get_replies(thread_id):
+    user_id = request.args.get('user_id', type=int)
+
+    if not user_id:
+        return jsonify({"error": "user_id is required"}), 400
+
     conn = get_db_connection()
     cursor = conn.cursor(dictionary=True)
 
     try:
+        cursor.execute("""
+            SELECT f.course_code
+            FROM Discussion_Threads dt
+            JOIN Forums f ON dt.forum_id = f.forum_id
+            WHERE dt.thread_id = %s
+        """, (thread_id,))
+        thread = cursor.fetchone()
+
+        if not thread:
+            return jsonify({"error": "Thread not found"}), 404
+
+        if not can_user_access_course(cursor, user_id, thread["course_code"]):
+            return jsonify({"error": "ERROR! You do not have access to this thread"}), 403
+
         cursor.execute("""
             SELECT * FROM Thread_Replies WHERE thread_id = %s
         """, (thread_id,))
