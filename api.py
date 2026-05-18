@@ -8,11 +8,13 @@ from flask_jwt_extended import (
     get_jwt
 )
 import mysql.connector
+from datetime import timedelta
 
 app = Flask(__name__)
 CORS(app)
 
 app.config["JWT_SECRET_KEY"] = "comp3161-final-project-secret-key"
+app.config["JWT_ACCESS_TOKEN_EXPIRES"] = timedelta(hours=8)
 jwt = JWTManager(app)
 
 
@@ -82,21 +84,25 @@ def require_same_user_or_admin(current_user_id, current_user_type, requested_use
 
 @app.route('/register', methods=['POST'])
 def register_user():
-    data = request.get_json()
+    data = request.get_json() or {}
 
     user_id = data.get('user_id')
     first_name = data.get('first_name')
     last_name = data.get('last_name')
     email = data.get('email')
-    username = data.get('username')
     password = data.get('password')
     user_type = data.get('user_type')
 
-    if not all([user_id, first_name, last_name, email, username, password, user_type]):
-        return jsonify({"error": "All fields are required"}), 400
+    # The requirement says students/lecturers create their own accounts.
+    # Sysadmin accounts should already exist in the database and should not be
+    # created from the public registration page.
+    if not all([user_id, first_name, last_name, email, password, user_type]):
+        return jsonify({"error": "user_id, first_name, last_name, email, password and user_type are required"}), 400
 
-    if user_type not in ['student', 'lecturer', 'sysadmin']:
-        return jsonify({"error": "Invalid user_type"}), 400
+    if user_type not in ['student', 'lecturer']:
+        return jsonify({"error": "Only students and lecturers can create accounts from this page"}), 403
+
+    username = str(user_id)
 
     conn = get_db_connection()
     cursor = conn.cursor()
@@ -116,12 +122,8 @@ def register_user():
             role_query = "INSERT INTO Lecturers (lecturer_id, user_id) VALUES (%s, %s)"
             cursor.execute(role_query, (user_id, user_id))
 
-        elif user_type == 'sysadmin':
-            role_query = "INSERT INTO SysAdmins (admin_id, user_id) VALUES (%s, %s)"
-            cursor.execute(role_query, (user_id, user_id))
-
         conn.commit()
-        return jsonify({"message": "User registered successfully"}), 201
+        return jsonify({"message": "Account created successfully. You can now log in with your User ID and password."}), 201
 
     except mysql.connector.Error as err:
         conn.rollback()
@@ -134,13 +136,13 @@ def register_user():
 
 @app.route('/login', methods=['POST'])
 def login_user():
-    data = request.get_json()
+    data = request.get_json() or {}
 
-    username = data.get('username')
+    user_id = data.get('user_id')
     password = data.get('password')
 
-    if not username or not password:
-        return jsonify({"error": "username and password are required"}), 400
+    if not user_id or not password:
+        return jsonify({"error": "user_id and password are required"}), 400
 
     conn = get_db_connection()
     cursor = conn.cursor(dictionary=True)
@@ -149,13 +151,13 @@ def login_user():
         query = """
             SELECT user_id, first_name, last_name, email, username, user_type, password
             FROM Users
-            WHERE username = %s
+            WHERE user_id = %s
         """
-        cursor.execute(query, (username,))
+        cursor.execute(query, (user_id,))
         user = cursor.fetchone()
 
         if not user or user['password'] != password:
-            return jsonify({"error": "Invalid credentials"}), 401
+            return jsonify({"error": "Invalid User ID or password"}), 401
 
         access_token = create_access_token(
             identity=str(user["user_id"]),
@@ -184,6 +186,104 @@ def login_user():
     finally:
         cursor.close()
         conn.close()
+
+
+@app.route('/admin/users', methods=['POST'])
+@jwt_required()
+def admin_create_user():
+    current_user_id, current_user_type = get_current_user()
+
+    if not require_sysadmin(current_user_type):
+        return jsonify({"error": "Only sysadmins can create users from User Access"}), 403
+
+    data = request.get_json() or {}
+
+    user_id = data.get('user_id')
+    first_name = data.get('first_name')
+    last_name = data.get('last_name')
+    email = data.get('email')
+    password = data.get('password')
+    user_type = data.get('user_type')
+
+    if not all([user_id, first_name, last_name, email, password, user_type]):
+        return jsonify({"error": "user_id, first_name, last_name, email, password and user_type are required"}), 400
+
+    if user_type not in ['student', 'lecturer', 'sysadmin']:
+        return jsonify({"error": "user_type must be student, lecturer, or sysadmin"}), 400
+
+    username = str(user_id)
+
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    try:
+        user_query = """
+            INSERT INTO Users (user_id, first_name, last_name, email, username, password, user_type)
+            VALUES (%s, %s, %s, %s, %s, %s, %s)
+        """
+        cursor.execute(user_query, (user_id, first_name, last_name, email, username, password, user_type))
+
+        if user_type == 'student':
+            role_query = "INSERT INTO Students (student_id, user_id) VALUES (%s, %s)"
+            cursor.execute(role_query, (user_id, user_id))
+
+        elif user_type == 'lecturer':
+            role_query = "INSERT INTO Lecturers (lecturer_id, user_id) VALUES (%s, %s)"
+            cursor.execute(role_query, (user_id, user_id))
+
+        elif user_type == 'sysadmin':
+            role_query = "INSERT INTO SysAdmins (admin_id, user_id) VALUES (%s, %s)"
+            cursor.execute(role_query, (user_id, user_id))
+
+        conn.commit()
+        return jsonify({
+            "message": "User created successfully",
+            "created_by": current_user_id,
+            "user": {
+                "user_id": int(user_id),
+                "first_name": first_name,
+                "last_name": last_name,
+                "email": email,
+                "username": username,
+                "user_type": user_type
+            }
+        }), 201
+
+    except mysql.connector.Error as err:
+        conn.rollback()
+        return jsonify({"error": str(err)}), 500
+
+    finally:
+        cursor.close()
+        conn.close()
+
+
+@app.route('/admin/users', methods=['GET'])
+@jwt_required()
+def admin_get_users():
+    current_user_id, current_user_type = get_current_user()
+
+    if not require_sysadmin(current_user_type):
+        return jsonify({"error": "Only sysadmins can view users"}), 403
+
+    conn = get_db_connection()
+    cursor = conn.cursor(dictionary=True)
+
+    try:
+        cursor.execute("""
+            SELECT user_id, first_name, last_name, email, username, user_type
+            FROM Users
+            ORDER BY user_type, user_id
+        """)
+        return jsonify(cursor.fetchall()), 200
+
+    except mysql.connector.Error as err:
+        return jsonify({"error": str(err)}), 500
+
+    finally:
+        cursor.close()
+        conn.close()
+
 
 
 
@@ -351,18 +451,12 @@ def get_lecturer_courses(lecturer_id):
 def register_for_course(course_code):
     current_user_id, current_user_type = get_current_user()
 
-    # Requirement: students must be able to register themselves for a course.
-    # Admins can still register a student by sending { "student_id": 123 }.
-    if current_user_type == "student":
-        student_id = current_user_id
-    elif current_user_type == "sysadmin":
-        data = request.get_json(silent=True) or {}
-        student_id = data.get('student_id')
+    # Requirement: students register themselves for courses.
+    # Admins no longer register students for courses from the API.
+    if current_user_type != "student":
+        return jsonify({"error": "Only students can register themselves for courses"}), 403
 
-        if not student_id:
-            return jsonify({"error": "student_id is required when an admin registers a student"}), 400
-    else:
-        return jsonify({"error": "Only students or sysadmins can register for courses"}), 403
+    student_id = current_user_id
 
     conn = get_db_connection()
     cursor = conn.cursor(dictionary=True)
@@ -391,14 +485,14 @@ def register_for_course(course_code):
         existing = cursor.fetchone()
 
         if existing:
-            return jsonify({"error": "Student already registered for this course"}), 400
+            return jsonify({"error": "You are already registered for this course"}), 400
 
         count_check = "SELECT COUNT(*) AS total FROM Enrollments WHERE student_id = %s"
         cursor.execute(count_check, (student_id,))
         course_count = cursor.fetchone()
 
         if course_count["total"] >= 6:
-            return jsonify({"error": "Student cannot register for more than 6 courses"}), 400
+            return jsonify({"error": "You cannot register for more than 6 courses"}), 400
 
         next_id_query = "SELECT COALESCE(MAX(enroll_id), 0) + 1 AS next_id FROM Enrollments"
         cursor.execute(next_id_query)
@@ -412,7 +506,7 @@ def register_for_course(course_code):
         conn.commit()
 
         return jsonify({
-            "message": "Student registered for course successfully",
+            "message": "You registered for the course successfully",
             "student_id": student_id,
             "course_code": course_code
         }), 201

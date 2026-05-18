@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { apiRequest } from "../api/apiClient";
 import { SelectField, TextField } from "../components/Common";
 
-function normalizeRole(role, fallback) {
+function normalizeRole(role) {
   const cleanRole = String(role || "").toLowerCase();
 
   if (cleanRole === "admin") return "sysadmin";
@@ -10,14 +10,19 @@ function normalizeRole(role, fallback) {
     return cleanRole;
   }
 
-  return fallback;
+  return "student";
 }
 
 export default function Login({ onLogin }) {
-  const [username, setUsername] = useState("");
+  const [mode, setMode] = useState("login");
+  const [userId, setUserId] = useState("");
   const [password, setPassword] = useState("");
-  const [selectedRole, setSelectedRole] = useState("");
   const [message, setMessage] = useState("");
+
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
+  const [email, setEmail] = useState("");
+  const [userType, setUserType] = useState("student");
 
   async function handleLogin(event) {
     event.preventDefault();
@@ -25,7 +30,7 @@ export default function Login({ onLogin }) {
     const result = await apiRequest("/login", {
       method: "POST",
       body: JSON.stringify({
-        username: username.trim(),
+        user_id: Number(userId),
         password,
       }),
     });
@@ -40,18 +45,41 @@ export default function Login({ onLogin }) {
     }
 
     const userData = result.data.user || result.data;
-    const role = normalizeRole(
-      userData.user_type || userData.role,
-      selectedRole,
-    );
-
-    onLogin({
+    const loggedInUser = {
       user_id: userData.user_id || userData.id,
-      username: userData.username || username,
+      username: userData.username || String(userData.user_id || userId),
       first_name: userData.first_name || "",
       last_name: userData.last_name || "",
-      user_type: role,
+      email: userData.email || "",
+      user_type: normalizeRole(userData.user_type || userData.role),
+    };
+
+    localStorage.setItem("user", JSON.stringify(loggedInUser));
+    onLogin(loggedInUser);
+  }
+
+  async function handleRegister(event) {
+    event.preventDefault();
+
+    const result = await apiRequest("/register", {
+      method: "POST",
+      body: JSON.stringify({
+        user_id: Number(userId),
+        first_name: firstName,
+        last_name: lastName,
+        email,
+        password,
+        user_type: userType,
+      }),
     });
+
+    if (!result.ok) {
+      setMessage(result.data.error || "Account creation failed.");
+      return;
+    }
+
+    setMessage(result.data.message || "Account created. Log in with your User ID and password.");
+    setMode("login");
   }
 
   return (
@@ -65,32 +93,58 @@ export default function Login({ onLogin }) {
           </div>
         </div>
 
-        <h1>Login</h1>
-        <p className="loginText">Enter your correct credentials:</p>
+        <h1>{mode === "login" ? "Login" : "Create Account"}</h1>
+        <p className="loginText">
+          {mode === "login"
+            ? "Enter your User ID and password."
+            : "Students and lecturers can create their own accounts."}
+        </p>
         {message && <div className="alert">{message}</div>}
 
-        <form onSubmit={handleLogin} className="loginForm">
-          <TextField label="Username" value={username} setValue={setUsername} />
+        <form onSubmit={mode === "login" ? handleLogin : handleRegister} className="loginForm">
+          <TextField label="User ID" value={userId} setValue={setUserId} type="number" />
+
+          {mode === "register" && (
+            <>
+              <SelectField
+                label="Account Type"
+                value={userType}
+                setValue={setUserType}
+                options={[
+                  { value: "student", label: "Student" },
+                  { value: "lecturer", label: "Lecturer" },
+                ]}
+              />
+              <TextField label="First Name" value={firstName} setValue={setFirstName} />
+              <TextField label="Last Name" value={lastName} setValue={setLastName} />
+              <TextField label="Email" value={email} setValue={setEmail} type="email" />
+            </>
+          )}
+
           <TextField
             label="Password"
             value={password}
             setValue={setPassword}
             type="password"
           />
-          <SelectField
-            label="Select User"
-            value={selectedRole}
-            setValue={setSelectedRole}
-            options={[
-              { value: "sysadmin", label: "Admin" },
-              { value: "lecturer", label: "Lecturer" },
-              { value: "student", label: "Student" },
-            ]}
-          />
+
           <button className="primaryBtn" type="submit">
-            Login
+            {mode === "login" ? "Login" : "Create Account"}
           </button>
         </form>
+
+        <button
+          className="secondaryBtn"
+          type="button"
+          onClick={() => {
+            setMessage("");
+            setMode(mode === "login" ? "register" : "login");
+          }}
+        >
+          {mode === "login"
+            ? "Create a student/lecturer account"
+            : "Back to login"}
+        </button>
       </div>
     </div>
   );

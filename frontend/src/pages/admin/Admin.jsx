@@ -5,7 +5,7 @@ import AdminCourses from "./AdminCourses";
 import AdminDashboard from "./AdminDashboard";
 import AdminMembers from "./AdminMembers";
 import AdminReports from "./AdminReports";
-import AdminUsers from "./AdminUsers";
+import AdminUserAccess from "./AdminUserAccess";
 import { LecturerCourseLookup, StudentCourseLookup } from "./AdminLookups";
 
 // ================================
@@ -23,14 +23,14 @@ export default function AdminPortal({ user, onLogout }) {
   const [members, setMembers] = useState(null);
   const [reportTitle, setReportTitle] = useState("");
   const [reportData, setReportData] = useState([]);
+  const [users, setUsers] = useState([]);
 
-  const [registerUserId, setRegisterUserId] = useState("");
-  const [firstName, setFirstName] = useState("");
-  const [lastName, setLastName] = useState("");
-  const [email, setEmail] = useState("");
-  const [username, setUsername] = useState("");
-  const [password, setPassword] = useState("");
-  const [userType, setUserType] = useState("");
+  const [newUserId, setNewUserId] = useState("");
+  const [newFirstName, setNewFirstName] = useState("");
+  const [newLastName, setNewLastName] = useState("");
+  const [newEmail, setNewEmail] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [newUserType, setNewUserType] = useState("student");
 
   const [newCourseCode, setNewCourseCode] = useState("");
   const [newCourseTitle, setNewCourseTitle] = useState("");
@@ -41,11 +41,11 @@ export default function AdminPortal({ user, onLogout }) {
 
   const navItems = [
     ["dashboard", "Dashboard"],
-    ["users", "User Access"],
+    ["userAccess", "User Access"],
     ["courses", "Courses"],
     ["studentLookup", "Student Courses"],
     ["lecturerLookup", "Lecturer Courses"],
-    ["members", "Registration & Members"],
+    ["members", "Course Members"],
     ["reports", "Reports"],
   ];
 
@@ -58,21 +58,41 @@ export default function AdminPortal({ user, onLogout }) {
     setActivePage(page);
   }
 
-  async function registerUser() {
-    const result = await apiRequest("/register", {
+
+  async function createUser() {
+    const result = await apiRequest("/admin/users", {
       method: "POST",
       body: JSON.stringify({
-        user_id: Number(registerUserId),
-        first_name: firstName,
-        last_name: lastName,
-        email,
-        username,
-        password,
-        user_type: userType,
+        user_id: Number(newUserId),
+        first_name: newFirstName,
+        last_name: newLastName,
+        email: newEmail,
+        password: newPassword,
+        user_type: newUserType,
       }),
     });
 
-    show(result, "User registration completed.");
+    show(result, "User created.");
+
+    if (result.ok) {
+      setNewUserId("");
+      setNewFirstName("");
+      setNewLastName("");
+      setNewEmail("");
+      setNewPassword("");
+      setNewUserType("student");
+      loadUsers();
+    }
+  }
+
+  async function loadUsers() {
+    const result = await apiRequest("/admin/users");
+
+    if (result.ok) {
+      setUsers(result.data);
+    }
+
+    show(result, "Users loaded.");
   }
 
   async function createCourse() {
@@ -122,17 +142,6 @@ export default function AdminPortal({ user, onLogout }) {
     show(result, "Lecturer courses loaded.");
   }
 
-  async function registerStudentForCourse() {
-    const result = await apiRequest(`/courses/${courseCode}/register`, {
-      method: "POST",
-      body: JSON.stringify({
-        student_id: Number(studentId),
-      }),
-    });
-
-    show(result, "Student registration completed.");
-  }
-
   async function loadMembers() {
     const result = await apiRequest(`/courses/${courseCode}/members`);
 
@@ -166,23 +175,23 @@ export default function AdminPortal({ user, onLogout }) {
     >
       {activePage === "dashboard" && <AdminDashboard user={user} />}
 
-      {activePage === "users" && (
-        <AdminUsers
-          registerUserId={registerUserId}
-          setRegisterUserId={setRegisterUserId}
-          firstName={firstName}
-          setFirstName={setFirstName}
-          lastName={lastName}
-          setLastName={setLastName}
-          email={email}
-          setEmail={setEmail}
-          username={username}
-          setUsername={setUsername}
-          password={password}
-          setPassword={setPassword}
-          userType={userType}
-          setUserType={setUserType}
-          registerUser={registerUser}
+      {activePage === "userAccess" && (
+        <AdminUserAccess
+          newUserId={newUserId}
+          setNewUserId={setNewUserId}
+          newFirstName={newFirstName}
+          setNewFirstName={setNewFirstName}
+          newLastName={newLastName}
+          setNewLastName={setNewLastName}
+          newEmail={newEmail}
+          setNewEmail={setNewEmail}
+          newPassword={newPassword}
+          setNewPassword={setNewPassword}
+          newUserType={newUserType}
+          setNewUserType={setNewUserType}
+          users={users}
+          createUser={createUser}
+          loadUsers={loadUsers}
         />
       )}
 
@@ -223,10 +232,7 @@ export default function AdminPortal({ user, onLogout }) {
         <AdminMembers
           courseCode={courseCode}
           setCourseCode={setCourseCode}
-          studentId={studentId}
-          setStudentId={setStudentId}
           members={members}
-          registerStudentForCourse={registerStudentForCourse}
           loadMembers={loadMembers}
         />
       )}

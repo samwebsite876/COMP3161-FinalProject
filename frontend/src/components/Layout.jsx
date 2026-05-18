@@ -48,7 +48,7 @@ export default function Layout({
           </div>
 
           <div className="userBadge">
-            {user.username} | {user.user_type} | ID: {user.user_id}
+            {user.first_name || user.username} | {user.user_type} | ID: {user.user_id}
           </div>
         </header>
 

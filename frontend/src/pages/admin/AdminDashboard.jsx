@@ -14,7 +14,7 @@ export default function AdminDashboard({ user }) {
       <div className="panel">
         <h2>Admin Logic</h2>
         <p>
-          Admins create users, create courses, register students, check members,
+          Admins create courses, check course members,
           and view reports.
         </p>
       </div>
