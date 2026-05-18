@@ -32,6 +32,7 @@ export default function StudentPortal({ user, onLogout }) {
   const [content, setContent] = useState([]);
   const [assignments, setAssignments] = useState([]);
   const [selectedAssignment, setSelectedAssignment] = useState(null);
+  const [grades, setGrades] = useState([]);
   const [events, setEvents] = useState([]);
   const [forums, setForums] = useState([]);
   const [threads, setThreads] = useState([]);
@@ -76,13 +77,12 @@ export default function StudentPortal({ user, onLogout }) {
   }
 
   async function loadAssignments() {
-    if (!courseCode) {
-      setMessage("Enter a course code first.");
-      return;
-    }
+    const filter = courseCode
+      ? `?course_code=${courseCode}`
+      : "";
 
     const result = await apiRequest(
-      `/courses/${courseCode}/assignments?user_id=${user.user_id}`,
+      `/students/${user.user_id}/assignments${filter}`,
     );
 
     if (result.ok) {
@@ -90,7 +90,7 @@ export default function StudentPortal({ user, onLogout }) {
       setSelectedAssignment(null);
     }
 
-    show(result, "Assignments loaded.");
+    show(result, "Assignments and grades loaded.");
   }
 
   function selectAssignment(assignment) {
@@ -103,6 +103,18 @@ export default function StudentPortal({ user, onLogout }) {
       setMessage("Choose an assignment first.");
       return;
     }
+
+  async function loadGrades() {
+  const result = await apiRequest(
+    `/students/${user.user_id}/grades`
+  );
+
+  if (result.ok) {
+    setGrades(result.data);
+  }
+
+  show(result, "Grades loaded.");
+  }
 
     const result = await apiRequest(
       `/assignments/${selectedAssignment.assignment_id}/submit`,

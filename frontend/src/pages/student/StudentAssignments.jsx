@@ -18,16 +18,21 @@ export default function StudentAssignments({
       <div className="assignmentSingleCard">
         <div className="panel actionCard">
           <div className="sectionIntro">
-            <h2>Submit Assignment</h2>
+            <h2>Assignments</h2>
             <p>
               Student ID is locked to your logged-in account: {user.user_id}.
-              Select a course, choose an assignment, then submit your file URL.
+              Load your assignments, check submission status, and view grades on
+              this same page.
             </p>
           </div>
 
           <div className="assignmentVerticalLayout">
             <div className="assignmentWideCard">
-              <h3>1. Load Assignments</h3>
+              <h3>1. Load My Assignments</h3>
+              <p>
+                Leave Course Code blank to load assignments from all registered
+                courses, or enter a course code to filter.
+              </p>
 
               <TextField
                 label="Course Code"
@@ -36,12 +41,12 @@ export default function StudentAssignments({
               />
 
               <button className="primaryBtn" onClick={loadAssignments}>
-                Load Assignments
+                Load Assignments & Grades
               </button>
             </div>
 
             <div className="assignmentWideCard">
-              <h3>2. Choose Assignment</h3>
+              <h3>2. Select Assignment to Submit</h3>
 
               <div className="selectableCardGrid">
                 {assignments && assignments.length > 0 ? (
@@ -57,14 +62,18 @@ export default function StudentAssignments({
                       }
                       onClick={() => selectAssignment(assignment)}
                     >
-                      <strong>{assignment.title}</strong>
-                      <span>{assignment.description || "No description."}</span>
-                      <small>Due: {assignment.due_date || "Not set"}</small>
+                      <strong>{assignment.assignment_title}</strong>
+                      <span>
+                        {assignment.course_code} | Due:{" "}
+                        {assignment.due_date || "Not set"}
+                      </span>
+                      <small>Status: {assignment.status}</small>
+                      <small>Grade: {assignment.grade_status}</small>
                     </button>
                   ))
                 ) : (
                   <div className="emptyState">
-                    No assignments loaded for this course.
+                    No assignments loaded yet.
                   </div>
                 )}
               </div>
@@ -77,7 +86,7 @@ export default function StudentAssignments({
                 <span>Selected Assignment</span>
                 <strong>
                   {selectedAssignment
-                    ? selectedAssignment.title
+                    ? selectedAssignment.assignment_title
                     : "Choose an assignment first"}
                 </strong>
               </div>
@@ -97,7 +106,7 @@ export default function StudentAssignments({
       </div>
 
       <div className="panel">
-        <h2>Loaded Assignments</h2>
+        <h2>Assignments, Submissions & Grades</h2>
         <RecordCards data={assignments} />
       </div>
     </section>

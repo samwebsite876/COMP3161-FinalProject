@@ -913,6 +913,108 @@ def get_course_calendar_events(course_code):
         cursor.close()
         conn.close()
 
+@app.route('/students/<int:student_id>/assignments', methods=['GET'])
+def get_student_assignments_with_grades(student_id):
+    course_code = request.args.get('course_code')
+
+    conn = get_db_connection()
+    cursor = conn.cursor(dictionary=True)
+
+    try:
+        cursor.execute(
+            "SELECT student_id FROM Students WHERE student_id = %s",
+            (student_id,)
+        )
+
+        student = cursor.fetchone()
+
+        if not student:
+            return jsonify({"error": "Student not found"}), 404
+
+        params = [student_id]
+        course_filter = ""
+
+        if course_code:
+            course_filter = "AND c.course_code = %s"
+            params.append(course_code)
+
+        query = f"""
+            SELECT
+                c.course_code,
+                c.title AS course_title,
+
+                a.assignment_id,
+                a.title AS assignment_title,
+                a.description,
+                a.due_date,
+
+                s.submission_id,
+                s.file_url,
+                s.submitted_at,
+
+                g.grade
+
+            FROM Enrollments e
+
+            JOIN Courses c
+                ON e.course_code = c.course_code
+
+            JOIN Assignments a
+                ON c.course_code = a.course_code
+
+            LEFT JOIN Submissions s
+                ON a.assignment_id = s.assignment_id
+                AND s.student_id = e.student_id
+
+            LEFT JOIN Grades g
+                ON s.submission_id = g.submission_id
+
+            WHERE e.student_id = %s
+            {course_filter}
+
+            ORDER BY
+                c.course_code,
+                a.due_date,
+                a.assignment_id
+        """
+
+        cursor.execute(query, tuple(params))
+
+        assignments = cursor.fetchall()
+
+        for assignment in assignments:
+            assignment["due_date"] = (
+                str(assignment["due_date"])
+                if assignment["due_date"]
+                else None
+            )
+
+            assignment["submitted_at"] = (
+                str(assignment["submitted_at"])
+                if assignment["submitted_at"]
+                else None
+            )
+
+            assignment["status"] = (
+                "Submitted"
+                if assignment["submission_id"]
+                else "Not submitted"
+            )
+
+            assignment["grade_status"] = (
+                assignment["grade"]
+                if assignment["grade"] is not None
+                else "Not graded yet"
+            )
+
+        return jsonify(assignments), 200
+
+    except mysql.connector.Error as err:
+        return jsonify({"error": str(err)}), 500
+
+    finally:
+        cursor.close()
+        conn.close()
 
 @app.route('/students/<int:student_id>/calendar-events', methods=['GET'])
 def get_student_events(student_id):
