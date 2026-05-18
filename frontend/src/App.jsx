@@ -7,7 +7,7 @@ import AdminPortal from "./pages/admin/Admin";
 
 export default function App() {
   const [currentUser, setCurrentUser] = useState(() => {
-    const savedUser = localStorage.getItem("user");
+    const savedUser = sessionStorage.getItem("user");
 
     if (!savedUser) {
       return null;
@@ -16,20 +16,20 @@ export default function App() {
     try {
       return JSON.parse(savedUser);
     } catch {
-      localStorage.removeItem("user");
+      sessionStorage.removeItem("user");
       return null;
     }
   });
 
   useEffect(() => {
     if (currentUser) {
-      localStorage.setItem("user", JSON.stringify(currentUser));
+      sessionStorage.setItem("user", JSON.stringify(currentUser));
     }
   }, [currentUser]);
 
   function logout() {
-    localStorage.removeItem("token");
-    localStorage.removeItem("user");
+    sessionStorage.removeItem("token");
+    sessionStorage.removeItem("user");
     setCurrentUser(null);
   }
 

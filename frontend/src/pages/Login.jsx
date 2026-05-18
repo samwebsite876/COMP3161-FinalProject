@@ -41,7 +41,7 @@ export default function Login({ onLogin }) {
     }
 
     if (result.data.token) {
-      localStorage.setItem("token", result.data.token);
+      sessionStorage.setItem("token", result.data.token);
     }
 
     const userData = result.data.user || result.data;
@@ -54,7 +54,7 @@ export default function Login({ onLogin }) {
       user_type: normalizeRole(userData.user_type || userData.role),
     };
 
-    localStorage.setItem("user", JSON.stringify(loggedInUser));
+    sessionStorage.setItem("user", JSON.stringify(loggedInUser));
     onLogin(loggedInUser);
   }
 
