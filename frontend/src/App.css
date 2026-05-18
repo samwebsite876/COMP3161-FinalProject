@@ -2120,3 +2120,86 @@ body {
     width: 100%;
   }
 }
+
+
+/* =========================================================
+   ID-FREE SELECTABLE FLOW CARDS
+========================================================= */
+
+.forumFlowLayout {
+  display: grid;
+  gap: 22px;
+  width: 100%;
+}
+
+.selectableCardGrid {
+  display: grid;
+  gap: 14px;
+  margin-top: 12px;
+}
+
+.selectableCard {
+  width: 100%;
+  text-align: left;
+  border: 1px solid #d9e7f5;
+  background: #f8fbff;
+  color: var(--text);
+  border-radius: 18px;
+  padding: 18px;
+  cursor: pointer;
+  display: grid;
+  gap: 8px;
+  box-shadow: none;
+}
+
+.selectableCard:hover {
+  border-color: var(--blue);
+  background: #eef7ff;
+  transform: translateY(-1px);
+}
+
+.selectableCard strong {
+  color: var(--navy);
+  font-size: 17px;
+}
+
+.selectableCard span {
+  color: var(--muted);
+  line-height: 1.45;
+}
+
+.selectableCard small {
+  color: var(--muted);
+  font-weight: 800;
+}
+
+.selectableCard.selectedCard {
+  border: 2px solid var(--blue);
+  background: #eef7ff;
+}
+
+.forumCreateBox {
+  border: 1px solid #d9e7f5;
+  background: #f8fbff;
+  border-radius: 18px;
+  padding: 20px;
+  margin: 16px 0;
+}
+
+.forumCreateBox h3 {
+  margin-top: 0;
+}
+
+.forumFlowLayout .panel,
+.assignmentSingleCard .panel {
+  width: 100%;
+}
+
+.assignmentWideCard .selectableCardGrid {
+  margin-top: 16px;
+}
+
+.assignmentWideCard .primaryBtn,
+.assignmentWideCard .secondaryBtn {
+  width: 100%;
+}

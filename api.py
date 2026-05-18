@@ -527,6 +527,42 @@ def get_course_content(course_code):
         conn.close()
 
 
+@app.route('/courses/<course_code>/assignments', methods=['GET'])
+def get_course_assignments(course_code):
+    user_id = request.args.get('user_id', type=int)
+
+    if not user_id:
+        return jsonify({"error": "user_id is required"}), 400
+
+    conn = get_db_connection()
+    cursor = conn.cursor(dictionary=True)
+
+    try:
+        if not can_user_access_course(cursor, user_id, course_code):
+            return jsonify({"error": "ERROR! You do not have access to this course"}), 403
+
+        cursor.execute("""
+            SELECT assignment_id, course_code, title, description, due_date, created_by
+            FROM Assignments
+            WHERE course_code = %s
+            ORDER BY due_date, assignment_id
+        """, (course_code,))
+
+        assignments = cursor.fetchall()
+
+        for assignment in assignments:
+            assignment["due_date"] = str(assignment["due_date"]) if assignment["due_date"] else None
+
+        return jsonify(assignments), 200
+
+    except mysql.connector.Error as err:
+        return jsonify({"error": str(err)}), 500
+
+    finally:
+        cursor.close()
+        conn.close()
+
+
 @app.route('/courses/<course_code>/assignments', methods=['POST'])
 def create_assignment(course_code):
     data = request.get_json()
@@ -626,6 +662,54 @@ def submit_assignment(assignment_id):
 
     except mysql.connector.Error as err:
         conn.rollback()
+        return jsonify({"error": str(err)}), 500
+
+    finally:
+        cursor.close()
+        conn.close()
+
+
+@app.route('/courses/<course_code>/submissions', methods=['GET'])
+def get_course_submissions(course_code):
+    lecturer_id = request.args.get('lecturer_id', type=int)
+
+    if not lecturer_id:
+        return jsonify({"error": "lecturer_id is required"}), 400
+
+    conn = get_db_connection()
+    cursor = conn.cursor(dictionary=True)
+
+    try:
+        if not is_lecturer_assigned(cursor, lecturer_id, course_code):
+            return jsonify({"error": "ERROR! This lecturer is not assigned to this course"}), 403
+
+        cursor.execute("""
+            SELECT 
+                s.submission_id,
+                s.assignment_id,
+                a.title AS assignment_title,
+                s.student_id,
+                u.first_name,
+                u.last_name,
+                s.file_url,
+                s.submitted_at,
+                g.grade
+            FROM Submissions s
+            JOIN Assignments a ON s.assignment_id = a.assignment_id
+            JOIN Users u ON s.student_id = u.user_id
+            LEFT JOIN Grades g ON s.submission_id = g.submission_id
+            WHERE a.course_code = %s
+            ORDER BY s.submitted_at DESC, s.submission_id DESC
+        """, (course_code,))
+
+        submissions = cursor.fetchall()
+
+        for submission in submissions:
+            submission["submitted_at"] = str(submission["submitted_at"]) if submission["submitted_at"] else None
+
+        return jsonify(submissions), 200
+
+    except mysql.connector.Error as err:
         return jsonify({"error": str(err)}), 500
 
     finally:
@@ -946,9 +1030,18 @@ def create_thread(forum_id):
         return jsonify({"error": "Missing fields"}), 400
 
     conn = get_db_connection()
-    cursor = conn.cursor()
+    cursor = conn.cursor(dictionary=True)
 
     try:
+        cursor.execute("SELECT course_code FROM Forums WHERE forum_id = %s", (forum_id,))
+        forum = cursor.fetchone()
+
+        if not forum:
+            return jsonify({"error": "Forum not found"}), 404
+
+        if not can_user_access_course(cursor, user_id, forum["course_code"]):
+            return jsonify({"error": "ERROR! You do not have access to this forum"}), 403
+
         cursor.execute("""
             INSERT INTO Discussion_Threads (forum_id, user_id, title, content)
             VALUES (%s, %s, %s, %s)
@@ -1012,9 +1105,23 @@ def add_reply(thread_id):
         return jsonify({"error": "Missing fields"}), 400
 
     conn = get_db_connection()
-    cursor = conn.cursor()
+    cursor = conn.cursor(dictionary=True)
 
     try:
+        cursor.execute("""
+            SELECT f.course_code
+            FROM Discussion_Threads dt
+            JOIN Forums f ON dt.forum_id = f.forum_id
+            WHERE dt.thread_id = %s
+        """, (thread_id,))
+        thread = cursor.fetchone()
+
+        if not thread:
+            return jsonify({"error": "Thread not found"}), 404
+
+        if not can_user_access_course(cursor, user_id, thread["course_code"]):
+            return jsonify({"error": "ERROR! You do not have access to this thread"}), 403
+
         cursor.execute("""
             INSERT INTO Thread_Replies (thread_id, user_id, content, parent_reply_id)
             VALUES (%s, %s, %s, %s)

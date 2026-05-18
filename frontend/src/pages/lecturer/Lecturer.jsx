@@ -20,10 +20,11 @@ export default function LecturerPortal({ user, onLogout }) {
 
   const [courseCode, setCourseCode] = useState("");
   const [courses, setCourses] = useState([]);
-  const [members, setMembers] = useState(null);
   const [content, setContent] = useState([]);
   const [events, setEvents] = useState([]);
   const [forums, setForums] = useState([]);
+  const [selectedForum, setSelectedForum] = useState(null);
+  const [selectedThread, setSelectedThread] = useState(null);
   const [threads, setThreads] = useState([]);
   const [replies, setReplies] = useState([]);
 
@@ -36,7 +37,8 @@ export default function LecturerPortal({ user, onLogout }) {
   const [assignmentTitle, setAssignmentTitle] = useState("");
   const [assignmentDescription, setAssignmentDescription] = useState("",);
   const [dueDate, setDueDate] = useState("");
-  const [submissionId, setSubmissionId] = useState("");
+  const [submissions, setSubmissions] = useState([]);
+  const [selectedSubmission, setSelectedSubmission] = useState(null);
   const [grade, setGrade] = useState("");
 
   const [eventTitle, setEventTitle] = useState("");
@@ -45,8 +47,6 @@ export default function LecturerPortal({ user, onLogout }) {
   const [startTime, setStartTime] = useState("");
   const [endTime, setEndTime] = useState("");
 
-  const [forumId, setForumId] = useState("");
-  const [threadId, setThreadId] = useState("");
   const [forumTitle, setForumTitle] = useState("");
   const [forumDescription, setForumDescription] = useState("");
   const [threadTitle, setThreadTitle] = useState("");
@@ -81,15 +81,6 @@ export default function LecturerPortal({ user, onLogout }) {
     show(result, "Lecturer courses loaded.");
   }
 
-  async function loadMembers() {
-    const result = await apiRequest(`/courses/${courseCode}/members`);
-
-    if (result.ok) {
-      setMembers(result.data);
-    }
-
-    show(result, "Course members loaded.");
-  }
 
   async function addSection() {
     const result = await apiRequest(`/courses/${courseCode}/sections`, {
@@ -145,16 +136,51 @@ export default function LecturerPortal({ user, onLogout }) {
     show(result, "Assignment created.");
   }
 
+  async function loadSubmissions() {
+    if (!courseCode) {
+      setMessage("Enter a course code first.");
+      return;
+    }
+
+    const result = await apiRequest(
+      `/courses/${courseCode}/submissions?lecturer_id=${user.user_id}`,
+    );
+
+    if (result.ok) {
+      setSubmissions(result.data);
+      setSelectedSubmission(null);
+    }
+
+    show(result, "Submissions loaded.");
+  }
+
+  function selectSubmission(submission) {
+    setSelectedSubmission(submission);
+    setMessage("");
+  }
+
   async function gradeSubmission() {
-    const result = await apiRequest(`/submissions/${submissionId}/grade`, {
-      method: "POST",
-      body: JSON.stringify({
-        grade: Number(grade),
-        graded_by: Number(user.user_id),
-      }),
-    });
+    if (!selectedSubmission) {
+      setMessage("Choose a submission first.");
+      return;
+    }
+
+    const result = await apiRequest(
+      `/submissions/${selectedSubmission.submission_id}/grade`,
+      {
+        method: "POST",
+        body: JSON.stringify({
+          grade: Number(grade),
+          graded_by: Number(user.user_id),
+        }),
+      },
+    );
 
     show(result, "Submission graded.");
+
+    if (result.ok) {
+      loadSubmissions();
+    }
   }
 
   async function createCalendarEvent() {
@@ -194,6 +220,12 @@ export default function LecturerPortal({ user, onLogout }) {
     });
 
     show(result, "Forum created.");
+
+    if (result.ok) {
+      setForumTitle("");
+      setForumDescription("");
+      loadForums();
+    }
   }
 
   async function loadForums() {
@@ -219,18 +251,89 @@ export default function LecturerPortal({ user, onLogout }) {
     show(result, "Thread created.");
   }
 
-  async function loadThreads() {
-    const result = await apiRequest(`/forums/${forumId}/threads?user_id=${user.user_id}`);
+  async function loadThreads(forumIdToLoad) {
+    const id = forumIdToLoad || selectedForum?.forum_id;
+
+    if (!id) {
+      setMessage("Choose a forum first.");
+      return;
+    }
+
+    const result = await apiRequest(
+      `/forums/${id}/threads?user_id=${user.user_id}`,
+    );
 
     if (result.ok) {
       setThreads(result.data);
+      setSelectedThread(null);
+      setReplies([]);
     }
 
     show(result, "Threads loaded.");
   }
 
+  function selectForum(forum) {
+    setSelectedForum(forum);
+    setMessage("");
+    loadThreads(forum.forum_id);
+  }
+
+  async function createThread() {
+    if (!selectedForum) {
+      setMessage("Choose a forum first.");
+      return;
+    }
+
+    const result = await apiRequest(`/forums/${selectedForum.forum_id}/threads`, {
+      method: "POST",
+      body: JSON.stringify({
+        user_id: Number(user.user_id),
+        title: threadTitle,
+        content: threadContent,
+      }),
+    });
+
+    show(result, "Thread created.");
+
+    if (result.ok) {
+      setThreadTitle("");
+      setThreadContent("");
+      loadThreads(selectedForum.forum_id);
+    }
+  }
+
+  async function loadReplies(threadIdToLoad) {
+    const id = threadIdToLoad || selectedThread?.thread_id;
+
+    if (!id) {
+      setMessage("Choose a thread first.");
+      return;
+    }
+
+    const result = await apiRequest(
+      `/threads/${id}/replies?user_id=${user.user_id}`,
+    );
+
+    if (result.ok) {
+      setReplies(result.data);
+    }
+
+    show(result, "Replies loaded.");
+  }
+
+  function selectThread(thread) {
+    setSelectedThread(thread);
+    setMessage("");
+    loadReplies(thread.thread_id);
+  }
+
   async function addReply() {
-    const result = await apiRequest(`/threads/${threadId}/replies`, {
+    if (!selectedThread) {
+      setMessage("Choose a thread first.");
+      return;
+    }
+
+    const result = await apiRequest(`/threads/${selectedThread.thread_id}/replies`, {
       method: "POST",
       body: JSON.stringify({
         user_id: Number(user.user_id),
@@ -240,16 +343,11 @@ export default function LecturerPortal({ user, onLogout }) {
     });
 
     show(result, "Reply added.");
-  }
-
-  async function loadReplies() {
-    const result = await apiRequest(`/threads/${threadId}/replies?user_id=${user.user_id}`);
 
     if (result.ok) {
-      setReplies(result.data);
+      setReplyContent("");
+      loadReplies(selectedThread.thread_id);
     }
-
-    show(result, "Replies loaded.");
   }
 
   return (
@@ -300,11 +398,13 @@ export default function LecturerPortal({ user, onLogout }) {
           setAssignmentDescription={setAssignmentDescription}
           dueDate={dueDate}
           setDueDate={setDueDate}
-          submissionId={submissionId}
-          setSubmissionId={setSubmissionId}
+          submissions={submissions}
+          selectedSubmission={selectedSubmission}
+          selectSubmission={selectSubmission}
           grade={grade}
           setGrade={setGrade}
           createAssignment={createAssignment}
+          loadSubmissions={loadSubmissions}
           gradeSubmission={gradeSubmission}
         />
       )}
@@ -335,19 +435,20 @@ export default function LecturerPortal({ user, onLogout }) {
           setForumTitle={setForumTitle}
           forumDescription={forumDescription}
           setForumDescription={setForumDescription}
+          isLecturer={true}
           createForum={createForum}
           courseCode={courseCode}
           setCourseCode={setCourseCode}
-          forumId={forumId}
-          setForumId={setForumId}
-          threadId={threadId}
-          setThreadId={setThreadId}
+          selectedForum={selectedForum}
+          selectedThread={selectedThread}
           forums={forums}
           threads={threads}
           replies={replies}
           loadForums={loadForums}
           loadThreads={loadThreads}
+          selectForum={selectForum}
           createThread={createThread}
+          selectThread={selectThread}
           loadReplies={loadReplies}
           addReply={addReply}
           threadTitle={threadTitle}

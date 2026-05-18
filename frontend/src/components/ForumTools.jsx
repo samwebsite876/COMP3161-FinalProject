@@ -2,6 +2,7 @@ import React from "react";
 import { RecordCards, TextField } from "./Common";
 
 export default function ForumTools({
+  isLecturer = false,
   forumTitle,
   setForumTitle,
   forumDescription,
@@ -9,18 +10,16 @@ export default function ForumTools({
   createForum,
   courseCode,
   setCourseCode,
-  forumId,
-  setForumId,
-  threadId,
-  setThreadId,
+  selectedForum,
+  selectedThread,
   forums,
   threads,
   replies,
   loadForums,
+  selectForum,
   createThread,
-  loadThreads,
+  selectThread,
   addReply,
-  loadReplies,
   threadTitle,
   setThreadTitle,
   threadContent,
@@ -33,133 +32,154 @@ export default function ForumTools({
       <div className="sectionHeader">
         <div>
           <h2>Course Forums</h2>
-          <p>Create forums, load course forums, start threads, and reply.</p>
+          <p>
+            Load forums, choose a forum, open its threads, then select a thread
+            to read and reply. No manual forum or thread IDs needed.
+          </p>
         </div>
       </div>
 
-      <div className="forumLayout betterForumLayout">
-        {/* ===================================================== */}
-        {/* FORUMS */}
-        {/* ===================================================== */}
-
+      <div className="forumFlowLayout">
         <div className="panel actionCard">
-          <h2>1. Create / Load Forums</h2>
+          <h2>1. Choose Course</h2>
 
-          <div className="forumFormGrid">
-            <TextField
-              label="Course Code"
-              value={courseCode}
-              setValue={setCourseCode}
-            />
+          <TextField
+            label="Course Code"
+            value={courseCode}
+            setValue={setCourseCode}
+          />
 
-            <TextField
-              label="Forum Title"
-              value={forumTitle}
-              setValue={setForumTitle}
-            />
+          {isLecturer && (
+            <div className="forumCreateBox">
+              <h3>Create Forum</h3>
 
-            <div className="fullWidth">
+              <TextField
+                label="Forum Title"
+                value={forumTitle}
+                setValue={setForumTitle}
+              />
+
               <TextField
                 label="Forum Description"
                 value={forumDescription}
                 setValue={setForumDescription}
               />
+
+              <button className="secondaryBtn" onClick={createForum}>
+                Create Forum
+              </button>
             </div>
-          </div>
+          )}
 
-          <div className="forumButtonRow">
-            <button className="secondaryBtn" onClick={createForum}>
-              Create Forum
-            </button>
+          <button className="primaryBtn" onClick={loadForums}>
+            Load Forums
+          </button>
+        </div>
 
-            <button className="primaryBtn" onClick={loadForums}>
-              Load Forums
-            </button>
-          </div>
+        <div className="panel actionCard">
+          <h2>2. Select Forum</h2>
 
-          <div className="embeddedResults">
-            <h3>Forums</h3>
-            <RecordCards data={forums} />
+          <div className="selectableCardGrid">
+            {forums && forums.length > 0 ? (
+              forums.map((forum) => (
+                <button
+                  type="button"
+                  key={forum.forum_id}
+                  className={
+                    selectedForum?.forum_id === forum.forum_id
+                      ? "selectableCard selectedCard"
+                      : "selectableCard"
+                  }
+                  onClick={() => selectForum(forum)}
+                >
+                  <strong>{forum.title || `Forum ${forum.forum_id}`}</strong>
+                  <span>{forum.description || "No description provided."}</span>
+                </button>
+              ))
+            ) : (
+              <div className="emptyState">No forums loaded yet.</div>
+            )}
           </div>
         </div>
 
-        {/* ===================================================== */}
-        {/* THREADS */}
-        {/* ===================================================== */}
+        <div className="panel actionCard">
+          <h2>3. Create Thread</h2>
+
+          <div className="selectedBox">
+            <span>Selected Forum</span>
+            <strong>
+              {selectedForum
+                ? selectedForum.title || `Forum ${selectedForum.forum_id}`
+                : "Choose a forum first"}
+            </strong>
+          </div>
+
+          <TextField
+            label="Thread Title"
+            value={threadTitle}
+            setValue={setThreadTitle}
+          />
+
+          <TextField
+            label="Thread Content"
+            value={threadContent}
+            setValue={setThreadContent}
+          />
+
+          <button className="secondaryBtn" onClick={createThread}>
+            Create Thread
+          </button>
+        </div>
 
         <div className="panel actionCard">
-          <h2>2. Create / Load Threads</h2>
+          <h2>4. Select Thread</h2>
 
-          <div className="forumFormGrid">
-            <TextField
-              label="Forum ID"
-              value={forumId}
-              setValue={setForumId}
-            />
-
-            <TextField
-              label="Thread Title"
-              value={threadTitle}
-              setValue={setThreadTitle}
-            />
-
-            <div className="fullWidth">
-              <TextField
-                label="Thread Content"
-                value={threadContent}
-                setValue={setThreadContent}
-              />
-            </div>
-          </div>
-
-          <div className="forumButtonRow">
-            <button className="secondaryBtn" onClick={createThread}>
-              Create Thread
-            </button>
-
-            <button className="primaryBtn" onClick={() => loadThreads()}>
-              Load Threads
-            </button>
-          </div>
-
-          <div className="embeddedResults">
-            <h3>Threads</h3>
-            <RecordCards data={threads} />
+          <div className="selectableCardGrid">
+            {threads && threads.length > 0 ? (
+              threads.map((thread) => (
+                <button
+                  type="button"
+                  key={thread.thread_id}
+                  className={
+                    selectedThread?.thread_id === thread.thread_id
+                      ? "selectableCard selectedCard"
+                      : "selectableCard"
+                  }
+                  onClick={() => selectThread(thread)}
+                >
+                  <strong>{thread.title || `Thread ${thread.thread_id}`}</strong>
+                  <span>{thread.content || "No content provided."}</span>
+                </button>
+              ))
+            ) : (
+              <div className="emptyState">
+                Select a forum to load its threads.
+              </div>
+            )}
           </div>
         </div>
 
-        {/* ===================================================== */}
-        {/* REPLIES */}
-        {/* ===================================================== */}
-
         <div className="panel actionCard">
-          <h2>3. Add / Load Replies</h2>
+          <h2>5. Replies</h2>
 
-          <div className="forumFormGrid">
-            <TextField
-              label="Thread ID"
-              value={threadId}
-              setValue={setThreadId}
-            />
-
-            <div className="fullWidth">
-              <TextField
-                label="Reply Content"
-                value={replyContent}
-                setValue={setReplyContent}
-              />
-            </div>
+          <div className="selectedBox">
+            <span>Selected Thread</span>
+            <strong>
+              {selectedThread
+                ? selectedThread.title || `Thread ${selectedThread.thread_id}`
+                : "Choose a thread first"}
+            </strong>
           </div>
 
-          <div className="forumButtonRow">
-            <button className="secondaryBtn" onClick={addReply}>
-              Add Reply
-            </button>
+          <TextField
+            label="Reply Content"
+            value={replyContent}
+            setValue={setReplyContent}
+          />
 
-            <button className="primaryBtn" onClick={loadReplies}>
-              Load Replies
-            </button>
-          </div>
+          <button className="secondaryBtn" onClick={addReply}>
+            Add Reply
+          </button>
 
           <div className="embeddedResults">
             <h3>Replies</h3>
