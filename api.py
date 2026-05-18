@@ -351,14 +351,18 @@ def get_lecturer_courses(lecturer_id):
 def register_for_course(course_code):
     current_user_id, current_user_type = get_current_user()
 
-    if not require_sysadmin(current_user_type):
-        return jsonify({"error": "Only sysadmins can register students for courses"}), 403
+    # Requirement: students must be able to register themselves for a course.
+    # Admins can still register a student by sending { "student_id": 123 }.
+    if current_user_type == "student":
+        student_id = current_user_id
+    elif current_user_type == "sysadmin":
+        data = request.get_json(silent=True) or {}
+        student_id = data.get('student_id')
 
-    data = request.get_json()
-    student_id = data.get('student_id')
-
-    if not student_id:
-        return jsonify({"error": "student_id is required"}), 400
+        if not student_id:
+            return jsonify({"error": "student_id is required when an admin registers a student"}), 400
+    else:
+        return jsonify({"error": "Only students or sysadmins can register for courses"}), 403
 
     conn = get_db_connection()
     cursor = conn.cursor(dictionary=True)
@@ -407,7 +411,11 @@ def register_for_course(course_code):
         cursor.execute(insert_query, (next_id, student_id, course_code))
         conn.commit()
 
-        return jsonify({"message": "Student registered for course successfully"}), 201
+        return jsonify({
+            "message": "Student registered for course successfully",
+            "student_id": student_id,
+            "course_code": course_code
+        }), 201
 
     except mysql.connector.Error as err:
         conn.rollback()

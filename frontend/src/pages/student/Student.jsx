@@ -64,6 +64,24 @@ export default function StudentPortal({ user, onLogout }) {
     show(result, "Student courses loaded.");
   }
 
+  async function registerForCourse() {
+    if (!courseCode) {
+      setMessage("Enter a course code first.");
+      return;
+    }
+
+    const result = await apiRequest(`/courses/${courseCode}/register`, {
+      method: "POST",
+      body: JSON.stringify({}),
+    });
+
+    show(result, "Course registration completed.");
+
+    if (result.ok) {
+      loadMyCourses();
+    }
+  }
+
   async function loadContent() {
     if (!courseCode) {
       setMessage("Enter a course code first.");
@@ -275,7 +293,13 @@ export default function StudentPortal({ user, onLogout }) {
       {activePage === "dashboard" && <StudentDashboard user={user} />}
 
       {activePage === "courses" && (
-        <StudentCourses courses={courses} loadMyCourses={loadMyCourses} />
+        <StudentCourses
+          courseCode={courseCode}
+          setCourseCode={setCourseCode}
+          courses={courses}
+          loadMyCourses={loadMyCourses}
+          registerForCourse={registerForCourse}
+        />
       )}
 
       {activePage === "content" && (
