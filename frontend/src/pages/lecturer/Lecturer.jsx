@@ -10,9 +10,8 @@ import LecturerDashboard from "./LecturerDashboard";
 
 // ================================
 // LECTURER PORTAL LOGIC
-// Lecturers manage assigned courses only.
-// For protected actions, the logged-in lecturer ID is used automatically:
-// uploaded_by, created_by, and graded_by = user.user_id.
+// JWT handles identity. The frontend no longer sends uploaded_by,
+// created_by, graded_by, lecturer_id, or user_id in protected requests.
 // ================================
 export default function LecturerPortal({ user, onLogout }) {
   const [activePage, setActivePage] = useState("dashboard");
@@ -32,10 +31,10 @@ export default function LecturerPortal({ user, onLogout }) {
   const [sectionId, setSectionId] = useState("");
   const [contentTitle, setContentTitle] = useState("");
   const [contentType, setContentType] = useState("");
-  const [contentUrl, setContentUrl] = useState("",);
+  const [contentUrl, setContentUrl] = useState("");
 
   const [assignmentTitle, setAssignmentTitle] = useState("");
-  const [assignmentDescription, setAssignmentDescription] = useState("",);
+  const [assignmentDescription, setAssignmentDescription] = useState("");
   const [dueDate, setDueDate] = useState("");
   const [submissions, setSubmissions] = useState([]);
   const [selectedSubmission, setSelectedSubmission] = useState(null);
@@ -81,13 +80,11 @@ export default function LecturerPortal({ user, onLogout }) {
     show(result, "Lecturer courses loaded.");
   }
 
-
   async function addSection() {
     const result = await apiRequest(`/courses/${courseCode}/sections`, {
       method: "POST",
       body: JSON.stringify({
         title: sectionTitle,
-        created_by: Number(user.user_id),
       }),
     });
 
@@ -105,7 +102,6 @@ export default function LecturerPortal({ user, onLogout }) {
         title: contentTitle,
         content_type: contentType,
         content_url: contentUrl,
-        uploaded_by: Number(user.user_id),
       }),
     });
 
@@ -113,7 +109,7 @@ export default function LecturerPortal({ user, onLogout }) {
   }
 
   async function loadContent() {
-    const result = await apiRequest(`/courses/${courseCode}/content?user_id=${user.user_id}`);
+    const result = await apiRequest(`/courses/${courseCode}/content`);
 
     if (result.ok) {
       setContent(result.data);
@@ -129,7 +125,6 @@ export default function LecturerPortal({ user, onLogout }) {
         title: assignmentTitle,
         description: assignmentDescription,
         due_date: dueDate,
-        created_by: Number(user.user_id),
       }),
     });
 
@@ -142,9 +137,7 @@ export default function LecturerPortal({ user, onLogout }) {
       return;
     }
 
-    const result = await apiRequest(
-      `/courses/${courseCode}/submissions?lecturer_id=${user.user_id}`,
-    );
+    const result = await apiRequest(`/courses/${courseCode}/submissions`);
 
     if (result.ok) {
       setSubmissions(result.data);
@@ -171,7 +164,6 @@ export default function LecturerPortal({ user, onLogout }) {
         method: "POST",
         body: JSON.stringify({
           grade: Number(grade),
-          graded_by: Number(user.user_id),
         }),
       },
     );
@@ -192,7 +184,6 @@ export default function LecturerPortal({ user, onLogout }) {
         event_date: eventDate,
         start_time: startTime,
         end_time: endTime,
-        created_by: Number(user.user_id),
       }),
     });
 
@@ -200,7 +191,7 @@ export default function LecturerPortal({ user, onLogout }) {
   }
 
   async function loadCalendarEvents() {
-    const result = await apiRequest(`/courses/${courseCode}/calendar-events?user_id=${user.user_id}`);
+    const result = await apiRequest(`/courses/${courseCode}/calendar-events`);
 
     if (result.ok) {
       setEvents(result.data);
@@ -215,7 +206,6 @@ export default function LecturerPortal({ user, onLogout }) {
       body: JSON.stringify({
         title: forumTitle,
         description: forumDescription,
-        created_by: Number(user.user_id),
       }),
     });
 
@@ -229,26 +219,17 @@ export default function LecturerPortal({ user, onLogout }) {
   }
 
   async function loadForums() {
-    const result = await apiRequest(`/courses/${courseCode}/forums?user_id=${user.user_id}`);
+    const result = await apiRequest(`/courses/${courseCode}/forums`);
 
     if (result.ok) {
       setForums(result.data);
+      setSelectedForum(null);
+      setSelectedThread(null);
+      setThreads([]);
+      setReplies([]);
     }
 
     show(result, "Forums loaded.");
-  }
-
-  async function createThread() {
-    const result = await apiRequest(`/forums/${forumId}/threads`, {
-      method: "POST",
-      body: JSON.stringify({
-        user_id: Number(user.user_id),
-        title: threadTitle,
-        content: threadContent,
-      }),
-    });
-
-    show(result, "Thread created.");
   }
 
   async function loadThreads(forumIdToLoad) {
@@ -259,9 +240,7 @@ export default function LecturerPortal({ user, onLogout }) {
       return;
     }
 
-    const result = await apiRequest(
-      `/forums/${id}/threads?user_id=${user.user_id}`,
-    );
+    const result = await apiRequest(`/forums/${id}/threads`);
 
     if (result.ok) {
       setThreads(result.data);
@@ -287,7 +266,6 @@ export default function LecturerPortal({ user, onLogout }) {
     const result = await apiRequest(`/forums/${selectedForum.forum_id}/threads`, {
       method: "POST",
       body: JSON.stringify({
-        user_id: Number(user.user_id),
         title: threadTitle,
         content: threadContent,
       }),
@@ -310,9 +288,7 @@ export default function LecturerPortal({ user, onLogout }) {
       return;
     }
 
-    const result = await apiRequest(
-      `/threads/${id}/replies?user_id=${user.user_id}`,
-    );
+    const result = await apiRequest(`/threads/${id}/replies`);
 
     if (result.ok) {
       setReplies(result.data);
@@ -336,7 +312,6 @@ export default function LecturerPortal({ user, onLogout }) {
     const result = await apiRequest(`/threads/${selectedThread.thread_id}/replies`, {
       method: "POST",
       body: JSON.stringify({
-        user_id: Number(user.user_id),
         content: replyContent,
         parent_reply_id: null,
       }),
@@ -431,11 +406,11 @@ export default function LecturerPortal({ user, onLogout }) {
 
       {activePage === "forums" && (
         <ForumTools
+          isLecturer={true}
           forumTitle={forumTitle}
           setForumTitle={setForumTitle}
           forumDescription={forumDescription}
           setForumDescription={setForumDescription}
-          isLecturer={true}
           createForum={createForum}
           courseCode={courseCode}
           setCourseCode={setCourseCode}
@@ -462,5 +437,3 @@ export default function LecturerPortal({ user, onLogout }) {
     </Layout>
   );
 }
-
-

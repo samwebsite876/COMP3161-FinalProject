@@ -9,6 +9,7 @@ export default function App() {
   const [currentUser, setCurrentUser] = useState(null);
 
   function logout() {
+    localStorage.removeItem("token");
     setCurrentUser(null);
   }
 

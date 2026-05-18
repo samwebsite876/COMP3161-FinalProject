@@ -1,9 +1,19 @@
 from flask import Flask, request, jsonify
 from flask_cors import CORS
+from flask_jwt_extended import (
+    JWTManager,
+    create_access_token,
+    jwt_required,
+    get_jwt_identity,
+    get_jwt
+)
 import mysql.connector
 
 app = Flask(__name__)
 CORS(app)
+
+app.config["JWT_SECRET_KEY"] = "comp3161-final-project-secret-key"
+jwt = JWTManager(app)
 
 
 def get_db_connection():
@@ -55,6 +65,19 @@ def can_user_access_course(cursor, user_id, course_code):
         return is_lecturer_assigned(cursor, user_id, course_code)
 
     return False
+
+
+def get_current_user():
+    claims = get_jwt()
+    return int(claims["user_id"]), claims["user_type"]
+
+
+def require_sysadmin(user_type):
+    return user_type == "sysadmin"
+
+
+def require_same_user_or_admin(current_user_id, current_user_type, requested_user_id):
+    return current_user_type == "sysadmin" or current_user_id == requested_user_id
 
 
 @app.route('/register', methods=['POST'])
@@ -134,8 +157,17 @@ def login_user():
         if not user or user['password'] != password:
             return jsonify({"error": "Invalid credentials"}), 401
 
+        access_token = create_access_token(
+            identity=str(user["user_id"]),
+            additional_claims={
+                "user_id": user["user_id"],
+                "user_type": user["user_type"]
+            }
+        )
+
         return jsonify({
             "message": "Login successful",
+            "token": access_token,
             "user": {
                 "user_id": user["user_id"],
                 "first_name": user["first_name"],
@@ -154,34 +186,29 @@ def login_user():
         conn.close()
 
 
+
 @app.route('/courses', methods=['POST'])
+@jwt_required()
 def create_course():
+    current_user_id, current_user_type = get_current_user()
+
+    if not require_sysadmin(current_user_type):
+        return jsonify({"error": "Only sysadmins can create courses"}), 403
+
     data = request.get_json()
 
-    created_by = data.get('created_by')
     course_code = data.get('course_code')
     title = data.get('title')
     assigned_lecturer = data.get('assigned_lecturer')
+    created_by = current_user_id
 
-    if not all([created_by, course_code, title, assigned_lecturer]):
-        return jsonify({"error": "created_by, course_code, title and assigned_lecturer are required"}), 400
+    if not all([course_code, title, assigned_lecturer]):
+        return jsonify({"error": "course_code, title and assigned_lecturer are required"}), 400
 
     conn = get_db_connection()
     cursor = conn.cursor(dictionary=True)
 
     try:
-        admin_query = """
-            SELECT sa.admin_id, u.user_type
-            FROM SysAdmins sa
-            JOIN Users u ON sa.user_id = u.user_id
-            WHERE sa.admin_id = %s
-        """
-        cursor.execute(admin_query, (created_by,))
-        admin = cursor.fetchone()
-
-        if not admin:
-            return jsonify({"error": "Only sysadmins can create courses"}), 403
-
         lecturer_query = """
             SELECT l.lecturer_id
             FROM Lecturers l
@@ -200,7 +227,10 @@ def create_course():
         cursor.execute(insert_query, (course_code, title, assigned_lecturer))
         conn.commit()
 
-        return jsonify({"message": "Course created successfully"}), 201
+        return jsonify({
+            "message": "Course created successfully",
+            "created_by": created_by
+        }), 201
 
     except mysql.connector.Error as err:
         conn.rollback()
@@ -210,8 +240,8 @@ def create_course():
         cursor.close()
         conn.close()
 
-
 @app.route('/courses', methods=['GET'])
+@jwt_required()
 def get_all_courses():
     conn = get_db_connection()
     cursor = conn.cursor(dictionary=True)
@@ -238,8 +268,15 @@ def get_all_courses():
         conn.close()
 
 
+
 @app.route('/courses/student/<int:student_id>', methods=['GET'])
+@jwt_required()
 def get_student_courses(student_id):
+    current_user_id, current_user_type = get_current_user()
+
+    if not require_same_user_or_admin(current_user_id, current_user_type, student_id):
+        return jsonify({"error": "You can only view your own student courses"}), 403
+
     conn = get_db_connection()
     cursor = conn.cursor(dictionary=True)
 
@@ -272,7 +309,13 @@ def get_student_courses(student_id):
 
 
 @app.route('/courses/lecturer/<int:lecturer_id>', methods=['GET'])
+@jwt_required()
 def get_lecturer_courses(lecturer_id):
+    current_user_id, current_user_type = get_current_user()
+
+    if not require_same_user_or_admin(current_user_id, current_user_type, lecturer_id):
+        return jsonify({"error": "You can only view your own lecturer courses"}), 403
+
     conn = get_db_connection()
     cursor = conn.cursor(dictionary=True)
 
@@ -304,9 +347,14 @@ def get_lecturer_courses(lecturer_id):
 
 
 @app.route('/courses/<course_code>/register', methods=['POST'])
+@jwt_required()
 def register_for_course(course_code):
-    data = request.get_json()
+    current_user_id, current_user_type = get_current_user()
 
+    if not require_sysadmin(current_user_type):
+        return jsonify({"error": "Only sysadmins can register students for courses"}), 403
+
+    data = request.get_json()
     student_id = data.get('student_id')
 
     if not student_id:
@@ -371,20 +419,23 @@ def register_for_course(course_code):
 
 
 @app.route('/courses/<course_code>/sections', methods=['POST'])
+@jwt_required()
 def add_section(course_code):
+    current_user_id, current_user_type = get_current_user()
+
+    if current_user_type != "lecturer":
+        return jsonify({"error": "Only lecturers can create sections"}), 403
+
     data = request.get_json()
 
     if not data:
         return jsonify({"error": "ERROR! A Request body is required"}), 400
 
     title = data.get('title')
-    created_by = data.get('created_by')
+    created_by = current_user_id
 
     if not title or title.strip() == "":
         return jsonify({"error": "ERROR! A Section title is required"}), 400
-
-    if not created_by:
-        return jsonify({"error": "ERROR! created_by is required"}), 400
 
     conn = get_db_connection()
     cursor = conn.cursor(dictionary=True)
@@ -428,9 +479,14 @@ def add_section(course_code):
         conn.close()
 
 
-# For Lecturer Only
 @app.route('/sections/<int:section_id>/content', methods=['POST'])
+@jwt_required()
 def add_content(section_id):
+    current_user_id, current_user_type = get_current_user()
+
+    if current_user_type != "lecturer":
+        return jsonify({"error": "Only lecturers can upload content"}), 403
+
     data = request.get_json()
 
     if not data:
@@ -439,10 +495,10 @@ def add_content(section_id):
     title = data.get('title')
     content_type = data.get('content_type')
     content_url = data.get('content_url')
-    uploaded_by = data.get('uploaded_by')
+    uploaded_by = current_user_id
 
-    if not all([content_type, uploaded_by]):
-        return jsonify({"error": "ERROR! Both content_type and uploaded_by are required"}), 400
+    if not content_type:
+        return jsonify({"error": "ERROR! content_type is required"}), 400
 
     if content_type not in ['link', 'file', 'slide']:
         return jsonify({"error": "ERROR! Invalid content_type"}), 400
@@ -456,12 +512,6 @@ def add_content(section_id):
 
         if not section:
             return jsonify({"error": "Section not found"}), 404
-
-        cursor.execute("SELECT lecturer_id FROM Lecturers WHERE lecturer_id = %s", (uploaded_by,))
-        lecturer = cursor.fetchone()
-
-        if not lecturer:
-            return jsonify({"error": "Sorry! Only lecturers can upload content"}), 403
 
         cursor.execute("SELECT assigned_lecturer FROM Courses WHERE course_code = %s", (section["course_code"],))
         course = cursor.fetchone()
@@ -488,11 +538,9 @@ def add_content(section_id):
 
 
 @app.route('/courses/<course_code>/content', methods=['GET'])
+@jwt_required()
 def get_course_content(course_code):
-    user_id = request.args.get('user_id', type=int)
-
-    if not user_id:
-        return jsonify({"error": "user_id is required"}), 400
+    current_user_id, current_user_type = get_current_user()
 
     conn = get_db_connection()
     cursor = conn.cursor(dictionary=True)
@@ -504,7 +552,7 @@ def get_course_content(course_code):
         if not course:
             return jsonify({"error": "Course not found"}), 404
 
-        if not can_user_access_course(cursor, user_id, course_code):
+        if not can_user_access_course(cursor, current_user_id, course_code):
             return jsonify({"error": "ERROR! You do not have access to this course"}), 403
 
         query = """
@@ -528,17 +576,15 @@ def get_course_content(course_code):
 
 
 @app.route('/courses/<course_code>/assignments', methods=['GET'])
+@jwt_required()
 def get_course_assignments(course_code):
-    user_id = request.args.get('user_id', type=int)
-
-    if not user_id:
-        return jsonify({"error": "user_id is required"}), 400
+    current_user_id, current_user_type = get_current_user()
 
     conn = get_db_connection()
     cursor = conn.cursor(dictionary=True)
 
     try:
-        if not can_user_access_course(cursor, user_id, course_code):
+        if not can_user_access_course(cursor, current_user_id, course_code):
             return jsonify({"error": "ERROR! You do not have access to this course"}), 403
 
         cursor.execute("""
@@ -564,7 +610,13 @@ def get_course_assignments(course_code):
 
 
 @app.route('/courses/<course_code>/assignments', methods=['POST'])
+@jwt_required()
 def create_assignment(course_code):
+    current_user_id, current_user_type = get_current_user()
+
+    if current_user_type != "lecturer":
+        return jsonify({"error": "Only lecturers can create assignments"}), 403
+
     data = request.get_json()
 
     if not data:
@@ -573,10 +625,10 @@ def create_assignment(course_code):
     title = data.get('title')
     description = data.get('description')
     due_date = data.get('due_date')
-    created_by = data.get('created_by')
+    created_by = current_user_id
 
-    if not all([title, due_date, created_by]):
-        return jsonify({"error": "ERROR! title, due_date and created_by are required"}), 400
+    if not all([title, due_date]):
+        return jsonify({"error": "ERROR! title and due_date are required"}), 400
 
     conn = get_db_connection()
     cursor = conn.cursor(dictionary=True)
@@ -610,17 +662,23 @@ def create_assignment(course_code):
 
 
 @app.route('/assignments/<int:assignment_id>/submit', methods=['POST'])
+@jwt_required()
 def submit_assignment(assignment_id):
+    current_user_id, current_user_type = get_current_user()
+
+    if current_user_type != "student":
+        return jsonify({"error": "Only students can submit assignments"}), 403
+
     data = request.get_json()
 
     if not data:
         return jsonify({"error": "ERROR! A Request body is required"}), 400
 
-    student_id = data.get('student_id')
+    student_id = current_user_id
     file_url = data.get('file_url')
 
-    if not all([student_id, file_url]):
-        return jsonify({"error": "ERROR! Both student_id and file_url are required"}), 400
+    if not file_url:
+        return jsonify({"error": "ERROR! file_url is required"}), 400
 
     conn = get_db_connection()
     cursor = conn.cursor(dictionary=True)
@@ -631,12 +689,6 @@ def submit_assignment(assignment_id):
 
         if not assignment:
             return jsonify({"error": "Assignment not found"}), 404
-
-        cursor.execute("SELECT student_id FROM Students WHERE student_id = %s", (student_id,))
-        student = cursor.fetchone()
-
-        if not student:
-            return jsonify({"error": "Invalid student. Please double check student information and try again."}), 403
 
         cursor.execute("""
             SELECT * FROM Enrollments 
@@ -670,11 +722,14 @@ def submit_assignment(assignment_id):
 
 
 @app.route('/courses/<course_code>/submissions', methods=['GET'])
+@jwt_required()
 def get_course_submissions(course_code):
-    lecturer_id = request.args.get('lecturer_id', type=int)
+    current_user_id, current_user_type = get_current_user()
 
-    if not lecturer_id:
-        return jsonify({"error": "lecturer_id is required"}), 400
+    if current_user_type != "lecturer":
+        return jsonify({"error": "Only lecturers can view course submissions"}), 403
+
+    lecturer_id = current_user_id
 
     conn = get_db_connection()
     cursor = conn.cursor(dictionary=True)
@@ -718,17 +773,23 @@ def get_course_submissions(course_code):
 
 
 @app.route('/submissions/<int:submission_id>/grade', methods=['POST'])
+@jwt_required()
 def grade_submission(submission_id):
+    current_user_id, current_user_type = get_current_user()
+
+    if current_user_type != "lecturer":
+        return jsonify({"error": "Only lecturers can grade submissions"}), 403
+
     data = request.get_json()
 
     if not data:
         return jsonify({"error": "ERROR! A Request body is required"}), 400
 
     grade = data.get('grade')
-    graded_by = data.get('graded_by')
+    graded_by = current_user_id
 
-    if grade is None or graded_by is None:
-        return jsonify({"error": "grade and graded_by are required"}), 400
+    if grade is None:
+        return jsonify({"error": "grade is required"}), 400
 
     if not (0 <= float(grade) <= 100):
         return jsonify({"error": "ERROR! Grade must be between 0 and 100"}), 400
@@ -747,12 +808,6 @@ def grade_submission(submission_id):
 
         if not info:
             return jsonify({"error": "Submission not found"}), 404
-
-        cursor.execute("SELECT lecturer_id FROM Lecturers WHERE lecturer_id = %s", (graded_by,))
-        lecturer = cursor.fetchone()
-
-        if not lecturer:
-            return jsonify({"error": "Sorry! Only lecturers can grade"}), 403
 
         if not is_lecturer_assigned(cursor, graded_by, info["course_code"]):
             return jsonify({"error": "ERROR! This lecturer is not assigned to this course"}), 403
@@ -795,11 +850,14 @@ def grade_submission(submission_id):
         conn.close()
 
 
-# =========================================================
-# RETRIEVE MEMBERS OF A COURSE
-# =========================================================
 @app.route('/courses/<course_code>/members', methods=['GET'])
+@jwt_required()
 def get_course_members(course_code):
+    current_user_id, current_user_type = get_current_user()
+
+    if not require_sysadmin(current_user_type):
+        return jsonify({"error": "Only sysadmins can view course members"}), 403
+
     conn = get_db_connection()
     cursor = conn.cursor(dictionary=True)
 
@@ -835,11 +893,14 @@ def get_course_members(course_code):
         conn.close()
 
 
-# =========================================================
-# CREATE CALENDAR EVENT
-# =========================================================
 @app.route('/courses/<course_code>/calendar-events', methods=['POST'])
+@jwt_required()
 def create_calendar_event(course_code):
+    current_user_id, current_user_type = get_current_user()
+
+    if current_user_type != "lecturer":
+        return jsonify({"error": "Only lecturers can create calendar events"}), 403
+
     data = request.get_json()
 
     title = data.get('title')
@@ -847,10 +908,10 @@ def create_calendar_event(course_code):
     event_date = data.get('event_date')
     start_time = data.get('start_time')
     end_time = data.get('end_time')
-    created_by = data.get('created_by')
+    created_by = current_user_id
 
-    if not all([title, event_date, created_by]):
-        return jsonify({"error": "title, event_date and created_by are required"}), 400
+    if not all([title, event_date]):
+        return jsonify({"error": "title and event_date are required"}), 400
 
     conn = get_db_connection()
     cursor = conn.cursor(dictionary=True)
@@ -876,18 +937,17 @@ def create_calendar_event(course_code):
         cursor.close()
         conn.close()
 
-@app.route('/courses/<course_code>/calendar-events', methods=['GET'])
-def get_course_calendar_events(course_code):
-    user_id = request.args.get('user_id', type=int)
 
-    if not user_id:
-        return jsonify({"error": "user_id is required"}), 400
+@app.route('/courses/<course_code>/calendar-events', methods=['GET'])
+@jwt_required()
+def get_course_calendar_events(course_code):
+    current_user_id, current_user_type = get_current_user()
 
     conn = get_db_connection()
     cursor = conn.cursor(dictionary=True)
 
     try:
-        if not can_user_access_course(cursor, user_id, course_code):
+        if not can_user_access_course(cursor, current_user_id, course_code):
             return jsonify({"error": "ERROR! You do not have access to this course"}), 403
 
         cursor.execute("""
@@ -913,8 +973,15 @@ def get_course_calendar_events(course_code):
         cursor.close()
         conn.close()
 
+
 @app.route('/students/<int:student_id>/assignments', methods=['GET'])
+@jwt_required()
 def get_student_assignments_with_grades(student_id):
+    current_user_id, current_user_type = get_current_user()
+
+    if not require_same_user_or_admin(current_user_id, current_user_type, student_id):
+        return jsonify({"error": "You can only view your own assignments"}), 403
+
     course_code = request.args.get('course_code')
 
     conn = get_db_connection()
@@ -942,40 +1009,25 @@ def get_student_assignments_with_grades(student_id):
             SELECT
                 c.course_code,
                 c.title AS course_title,
-
                 a.assignment_id,
                 a.title AS assignment_title,
                 a.description,
                 a.due_date,
-
                 s.submission_id,
                 s.file_url,
                 s.submitted_at,
-
                 g.grade
-
             FROM Enrollments e
-
-            JOIN Courses c
-                ON e.course_code = c.course_code
-
-            JOIN Assignments a
-                ON c.course_code = a.course_code
-
+            JOIN Courses c ON e.course_code = c.course_code
+            JOIN Assignments a ON c.course_code = a.course_code
             LEFT JOIN Submissions s
                 ON a.assignment_id = s.assignment_id
                 AND s.student_id = e.student_id
-
             LEFT JOIN Grades g
                 ON s.submission_id = g.submission_id
-
             WHERE e.student_id = %s
             {course_filter}
-
-            ORDER BY
-                c.course_code,
-                a.due_date,
-                a.assignment_id
+            ORDER BY c.course_code, a.due_date, a.assignment_id
         """
 
         cursor.execute(query, tuple(params))
@@ -1016,8 +1068,15 @@ def get_student_assignments_with_grades(student_id):
         cursor.close()
         conn.close()
 
+
 @app.route('/students/<int:student_id>/calendar-events', methods=['GET'])
+@jwt_required()
 def get_student_events(student_id):
+    current_user_id, current_user_type = get_current_user()
+
+    if not require_same_user_or_admin(current_user_id, current_user_type, student_id):
+        return jsonify({"error": "You can only view your own calendar events"}), 403
+
     date = request.args.get('date')
 
     conn = get_db_connection()
@@ -1060,15 +1119,21 @@ def get_student_events(student_id):
 
 
 @app.route('/courses/<course_code>/forums', methods=['POST'])
+@jwt_required()
 def create_forum(course_code):
+    current_user_id, current_user_type = get_current_user()
+
+    if current_user_type != "lecturer":
+        return jsonify({"error": "Only lecturers can create forums"}), 403
+
     data = request.get_json()
 
     title = data.get('title')
     description = data.get('description')
-    created_by = data.get('created_by')
+    created_by = current_user_id
 
-    if not title or not created_by:
-        return jsonify({"error": "title and created_by required"}), 400
+    if not title:
+        return jsonify({"error": "title is required"}), 400
 
     conn = get_db_connection()
     cursor = conn.cursor(dictionary=True)
@@ -1093,18 +1158,17 @@ def create_forum(course_code):
         cursor.close()
         conn.close()
 
-@app.route('/courses/<course_code>/forums', methods=['GET'])
-def get_forums(course_code):
-    user_id = request.args.get('user_id', type=int)
 
-    if not user_id:
-        return jsonify({"error": "user_id is required"}), 400
+@app.route('/courses/<course_code>/forums', methods=['GET'])
+@jwt_required()
+def get_forums(course_code):
+    current_user_id, current_user_type = get_current_user()
 
     conn = get_db_connection()
     cursor = conn.cursor(dictionary=True)
 
     try:
-        if not can_user_access_course(cursor, user_id, course_code):
+        if not can_user_access_course(cursor, current_user_id, course_code):
             return jsonify({"error": "ERROR! You do not have access to this course"}), 403
 
         cursor.execute("""
@@ -1121,14 +1185,17 @@ def get_forums(course_code):
 
 
 @app.route('/forums/<int:forum_id>/threads', methods=['POST'])
+@jwt_required()
 def create_thread(forum_id):
+    current_user_id, current_user_type = get_current_user()
+
     data = request.get_json()
 
-    user_id = data.get('user_id')
+    user_id = current_user_id
     title = data.get('title')
     content = data.get('content')
 
-    if not all([user_id, title, content]):
+    if not all([title, content]):
         return jsonify({"error": "Missing fields"}), 400
 
     conn = get_db_connection()
@@ -1161,13 +1228,10 @@ def create_thread(forum_id):
         conn.close()
 
 
-# =========================================================
 @app.route('/forums/<int:forum_id>/threads', methods=['GET'])
+@jwt_required()
 def get_threads(forum_id):
-    user_id = request.args.get('user_id', type=int)
-
-    if not user_id:
-        return jsonify({"error": "user_id is required"}), 400
+    current_user_id, current_user_type = get_current_user()
 
     conn = get_db_connection()
     cursor = conn.cursor(dictionary=True)
@@ -1179,7 +1243,7 @@ def get_threads(forum_id):
         if not forum:
             return jsonify({"error": "Forum not found"}), 404
 
-        if not can_user_access_course(cursor, user_id, forum["course_code"]):
+        if not can_user_access_course(cursor, current_user_id, forum["course_code"]):
             return jsonify({"error": "ERROR! You do not have access to this forum"}), 403
 
         cursor.execute("""
@@ -1196,14 +1260,17 @@ def get_threads(forum_id):
 
 
 @app.route('/threads/<int:thread_id>/replies', methods=['POST'])
+@jwt_required()
 def add_reply(thread_id):
+    current_user_id, current_user_type = get_current_user()
+
     data = request.get_json()
 
-    user_id = data.get('user_id')
+    user_id = current_user_id
     content = data.get('content')
     parent_reply_id = data.get('parent_reply_id')
 
-    if not user_id or not content:
+    if not content:
         return jsonify({"error": "Missing fields"}), 400
 
     conn = get_db_connection()
@@ -1242,11 +1309,9 @@ def add_reply(thread_id):
 
 
 @app.route('/threads/<int:thread_id>/replies', methods=['GET'])
+@jwt_required()
 def get_replies(thread_id):
-    user_id = request.args.get('user_id', type=int)
-
-    if not user_id:
-        return jsonify({"error": "user_id is required"}), 400
+    current_user_id, current_user_type = get_current_user()
 
     conn = get_db_connection()
     cursor = conn.cursor(dictionary=True)
@@ -1263,7 +1328,7 @@ def get_replies(thread_id):
         if not thread:
             return jsonify({"error": "Thread not found"}), 404
 
-        if not can_user_access_course(cursor, user_id, thread["course_code"]):
+        if not can_user_access_course(cursor, current_user_id, thread["course_code"]):
             return jsonify({"error": "ERROR! You do not have access to this thread"}), 403
 
         cursor.execute("""
@@ -1279,6 +1344,7 @@ def get_replies(thread_id):
         conn.close()
 
 @app.route('/views/courses-50-plus', methods=['GET'])
+@jwt_required()
 def get_courses_50_plus():
     conn = get_db_connection()
     cursor = conn.cursor(dictionary=True)
@@ -1295,6 +1361,7 @@ def get_courses_50_plus():
         conn.close()
 
 @app.route('/views/students-5-courses', methods=['GET'])
+@jwt_required()
 def get_students_5_courses():
     conn = get_db_connection()
     cursor = conn.cursor(dictionary=True)
@@ -1311,6 +1378,7 @@ def get_students_5_courses():
         conn.close()
 
 @app.route('/views/lecturers-3-courses', methods=['GET'])
+@jwt_required()
 def get_lecturers_3_courses():
     conn = get_db_connection()
     cursor = conn.cursor(dictionary=True)
@@ -1327,6 +1395,7 @@ def get_lecturers_3_courses():
         conn.close()
 
 @app.route('/views/top-10-courses', methods=['GET'])
+@jwt_required()
 def get_top_10_courses():
     conn = get_db_connection()
     cursor = conn.cursor(dictionary=True)
@@ -1343,6 +1412,7 @@ def get_top_10_courses():
         conn.close()
 
 @app.route('/views/top-10-students', methods=['GET'])
+@jwt_required()
 def get_top_10_students():
     conn = get_db_connection()
     cursor = conn.cursor(dictionary=True)

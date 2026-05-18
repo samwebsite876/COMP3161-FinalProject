@@ -65,7 +65,7 @@ export default function LecturerAssignments({
             <div className="assignmentWideCard">
               <h3>Load Submissions</h3>
               <p>
-                Uses the same course code above and your logged-in lecturer ID.
+                Uses the same course code above. Your lecturer identity comes from the JWT token.
               </p>
 
               <button className="primaryBtn" onClick={loadSubmissions}>

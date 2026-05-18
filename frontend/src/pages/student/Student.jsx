@@ -10,9 +10,8 @@ import StudentDashboard from "./StudentDashboard";
 
 // ================================
 // STUDENT PORTAL LOGIC
-// Students use their logged-in user_id as student_id.
-// They can view courses, view content, submit assignments, check calendar,
-// and participate in forums.
+// JWT handles identity. The frontend no longer sends student_id/user_id
+// in protected request bodies or query strings.
 // ================================
 export default function StudentPortal({ user, onLogout }) {
   const [activePage, setActivePage] = useState("dashboard");
@@ -25,14 +24,13 @@ export default function StudentPortal({ user, onLogout }) {
   const [selectedForum, setSelectedForum] = useState(null);
   const [selectedThread, setSelectedThread] = useState(null);
   const [threadTitle, setThreadTitle] = useState("");
-  const [threadContent, setThreadContent] = useState("",);
+  const [threadContent, setThreadContent] = useState("");
   const [replyContent, setReplyContent] = useState("");
 
   const [courses, setCourses] = useState([]);
   const [content, setContent] = useState([]);
   const [assignments, setAssignments] = useState([]);
   const [selectedAssignment, setSelectedAssignment] = useState(null);
-  const [grades, setGrades] = useState([]);
   const [events, setEvents] = useState([]);
   const [forums, setForums] = useState([]);
   const [threads, setThreads] = useState([]);
@@ -67,7 +65,12 @@ export default function StudentPortal({ user, onLogout }) {
   }
 
   async function loadContent() {
-    const result = await apiRequest(`/courses/${courseCode}/content?user_id=${user.user_id}`);
+    if (!courseCode) {
+      setMessage("Enter a course code first.");
+      return;
+    }
+
+    const result = await apiRequest(`/courses/${courseCode}/content`);
 
     if (result.ok) {
       setContent(result.data);
@@ -77,9 +80,7 @@ export default function StudentPortal({ user, onLogout }) {
   }
 
   async function loadAssignments() {
-    const filter = courseCode
-      ? `?course_code=${courseCode}`
-      : "";
+    const filter = courseCode ? `?course_code=${courseCode}` : "";
 
     const result = await apiRequest(
       `/students/${user.user_id}/assignments${filter}`,
@@ -104,41 +105,33 @@ export default function StudentPortal({ user, onLogout }) {
       return;
     }
 
-  async function loadGrades() {
-  const result = await apiRequest(
-    `/students/${user.user_id}/grades`
-  );
-
-  if (result.ok) {
-    setGrades(result.data);
-  }
-
-  show(result, "Grades loaded.");
-  }
-
     const result = await apiRequest(
       `/assignments/${selectedAssignment.assignment_id}/submit`,
       {
         method: "POST",
         body: JSON.stringify({
-          student_id: Number(user.user_id),
           file_url: fileUrl,
         }),
       },
     );
 
     show(result, "Assignment submitted.");
+
+    if (result.ok) {
+      setFileUrl("");
+      loadAssignments();
+    }
   }
 
   async function loadStudentEvents() {
-  const result = await apiRequest(`/students/${user.user_id}/calendar-events`);
+    const result = await apiRequest(`/students/${user.user_id}/calendar-events`);
 
-  if (result.ok) {
-    setEvents(result.data);
+    if (result.ok) {
+      setEvents(result.data);
+    }
+
+    show(result, "Student calendar events loaded.");
   }
-
-  show(result, "Student calendar events loaded.");
-}
 
   async function filterStudentEventsByDate() {
     if (!eventDate) {
@@ -147,7 +140,7 @@ export default function StudentPortal({ user, onLogout }) {
     }
 
     const result = await apiRequest(
-      `/students/${user.user_id}/calendar-events?date=${eventDate}`
+      `/students/${user.user_id}/calendar-events?date=${eventDate}`,
     );
 
     if (result.ok) {
@@ -158,10 +151,19 @@ export default function StudentPortal({ user, onLogout }) {
   }
 
   async function loadForums() {
-    const result = await apiRequest(`/courses/${courseCode}/forums?user_id=${user.user_id}`);
+    if (!courseCode) {
+      setMessage("Enter a course code first.");
+      return;
+    }
+
+    const result = await apiRequest(`/courses/${courseCode}/forums`);
 
     if (result.ok) {
       setForums(result.data);
+      setSelectedForum(null);
+      setSelectedThread(null);
+      setThreads([]);
+      setReplies([]);
     }
 
     show(result, "Forums loaded.");
@@ -175,9 +177,7 @@ export default function StudentPortal({ user, onLogout }) {
       return;
     }
 
-    const result = await apiRequest(
-      `/forums/${id}/threads?user_id=${user.user_id}`,
-    );
+    const result = await apiRequest(`/forums/${id}/threads`);
 
     if (result.ok) {
       setThreads(result.data);
@@ -203,7 +203,6 @@ export default function StudentPortal({ user, onLogout }) {
     const result = await apiRequest(`/forums/${selectedForum.forum_id}/threads`, {
       method: "POST",
       body: JSON.stringify({
-        user_id: Number(user.user_id),
         title: threadTitle,
         content: threadContent,
       }),
@@ -226,9 +225,7 @@ export default function StudentPortal({ user, onLogout }) {
       return;
     }
 
-    const result = await apiRequest(
-      `/threads/${id}/replies?user_id=${user.user_id}`,
-    );
+    const result = await apiRequest(`/threads/${id}/replies`);
 
     if (result.ok) {
       setReplies(result.data);
@@ -252,7 +249,6 @@ export default function StudentPortal({ user, onLogout }) {
     const result = await apiRequest(`/threads/${selectedThread.thread_id}/replies`, {
       method: "POST",
       body: JSON.stringify({
-        user_id: Number(user.user_id),
         content: replyContent,
         parent_reply_id: null,
       }),

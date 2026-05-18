@@ -35,6 +35,10 @@ export default function Login({ onLogin }) {
       return;
     }
 
+    if (result.data.token) {
+      localStorage.setItem("token", result.data.token);
+    }
+
     const userData = result.data.user || result.data;
     const role = normalizeRole(
       userData.user_type || userData.role,

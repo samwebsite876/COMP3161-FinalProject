@@ -79,7 +79,6 @@ export default function AdminPortal({ user, onLogout }) {
     const result = await apiRequest("/courses", {
       method: "POST",
       body: JSON.stringify({
-        created_by: Number(user.user_id),
         course_code: newCourseCode,
         title: newCourseTitle,
         assigned_lecturer: Number(assignedLecturer),
