@@ -159,7 +159,6 @@ for course_code in remaining_courses:
         course_assignments.append((course_code, lecturer_id))
         lecturer_course_count[lecturer_id] += 1
     else:
-        # This shouldn't happen with 120 lecturers * 5 = 600 capacity, 200 courses total
         lecturer_id = random.choice(lecturer_ids)
         course_assignments.append((course_code, lecturer_id))
         lecturer_course_count[lecturer_id] += 1

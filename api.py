@@ -22,7 +22,7 @@ def get_db_connection():
     return mysql.connector.connect(
         host="localhost",
         user="root",
-        password="Jamaica.876",
+        password="",
         database="university",
         auth_plugin='mysql_native_password'
     )
@@ -93,9 +93,6 @@ def register_user():
     password = data.get('password')
     user_type = data.get('user_type')
 
-    # The requirement says students/lecturers create their own accounts.
-    # Sysadmin accounts should already exist in the database and should not be
-    # created from the public registration page.
     if not all([user_id, first_name, last_name, email, password, user_type]):
         return jsonify({"error": "user_id, first_name, last_name, email, password and user_type are required"}), 400
 
@@ -451,8 +448,6 @@ def get_lecturer_courses(lecturer_id):
 def register_for_course(course_code):
     current_user_id, current_user_type = get_current_user()
 
-    # Requirement: students register themselves for courses.
-    # Admins no longer register students for courses from the API.
     if current_user_type != "student":
         return jsonify({"error": "Only students can register themselves for courses"}), 403
 
